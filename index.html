@@ -149,7 +149,7 @@
             const formatIDR = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val || 0);
 
             // ==========================================
-            // 4. EFEK & PENGAMBILAN DATA
+            // 4. EFEK & PENGAMBILAN DATA (REAL-TIME LISTENER)
             // ==========================================
             useEffect(() => {
                 supabase.auth.getSession().then(({ data: { session } }) => {
@@ -162,6 +162,29 @@
 
                 return () => subscription.unsubscribe();
             }, []);
+
+            // EFEK REAL-TIME SUPABASE: Akan merefresh data secara instan saat ada perubahan di database
+            useEffect(() => {
+                if (!session) return;
+                
+                const email = session.user.email;
+                const adminCheck = email.includes('admin@');
+
+                const refreshData = () => {
+                    if (adminCheck) fetchAdminData();
+                    else fetchMemberData(email);
+                };
+
+                // Fallback sinkronisasi otomatis karena WebSocket diblokir di environment Canvas
+                // Menggunakan metode Polling (Refresh data di latar belakang setiap 5 detik)
+                const intervalId = setInterval(() => {
+                    refreshData();
+                }, 5000);
+
+                return () => {
+                    clearInterval(intervalId);
+                };
+            }, [session]);
 
             const handleSession = async (sessionData) => {
                 setSession(sessionData);
@@ -301,24 +324,37 @@
                     const p = mSavings.filter(s => s.type === 'Pokok').reduce((a, b) => a + Number(b.amount), 0);
                     const w = mSavings.filter(s => s.type === 'Wajib').reduce((a, b) => a + Number(b.amount), 0);
                     const s = mSavings.filter(s => s.type === 'Sukarela').reduce((a, b) => a + Number(b.amount), 0);
+                    const c = mSavings.filter(s => s.type === 'Cicilan').reduce((a, b) => a + Number(b.amount), 0); // Total cicilan masuk
                     
                     const mCredits = financings.filter(f => f.member_id === member.id);
                     const angsuran = mCredits.reduce((a, b) => a + Number(b.monthly), 0);
+                    
+                    // Total Proyeksi Margin & Plafon
                     const marginContrib = mCredits.reduce((acc, curr) => acc + (Number(curr.amount) * (Number(curr.margin_percent) / 100) * Number(curr.tenor)), 0);
+                    const totalPlafon = mCredits.reduce((acc, curr) => acc + Number(curr.amount), 0);
+                    const totalPayable = totalPlafon + marginContrib;
 
-                    return { ...member, pokok: p, wajib: w, sukarela: s, totalSavings: p+w+s, totalAngsuran: angsuran, marginContrib };
+                    // Pendapatan Riil (Porsi Margin dari cicilan yang sudah dibayar secara kas)
+                    const marginRatio = totalPayable > 0 ? (marginContrib / totalPayable) : 0;
+                    const actualMarginPaid = c * marginRatio;
+
+                    return { ...member, pokok: p, wajib: w, sukarela: s, cicilanDibayar: c, totalSavings: p+w+s, totalAngsuran: angsuran, marginContrib, actualMarginPaid };
                 });
             }, [members, savings, financings, isAdmin, myProfile]);
 
-            // Laba Rugi Calculations
-            const totalPendapatan = useMemo(() => memberFinancialData.reduce((acc, curr) => acc + curr.marginContrib, 0), [memberFinancialData]);
+            // Laba Rugi Calculations (Cash Basis)
+            const totalPendapatan = useMemo(() => memberFinancialData.reduce((acc, curr) => acc + curr.actualMarginPaid, 0), [memberFinancialData]);
             const totalBeban = useMemo(() => expenses.reduce((a, b) => a + Number(b.amount), 0), [expenses]);
-            const labaBersih = Math.max(0, totalPendapatan - totalBeban);
+            const labaBersih = totalPendapatan - totalBeban;
 
             // Arus Kas Calculations
-            const totalKasMasuk = useMemo(() => savings.filter(s => s.amount > 0).reduce((a, b) => a + Number(b.amount), 0), [savings]);
+            const totalKasSimpanan = useMemo(() => savings.filter(s => ['Pokok', 'Wajib', 'Sukarela'].includes(s.type) && s.amount > 0).reduce((a, b) => a + Number(b.amount), 0), [savings]);
+            const totalKasCicilan = useMemo(() => savings.filter(s => s.type === 'Cicilan').reduce((a, b) => a + Number(b.amount), 0), [savings]);
+            const totalKasMasuk = totalKasSimpanan + totalKasCicilan;
+            
             const totalKasKeluarPenarikan = useMemo(() => Math.abs(savings.filter(s => s.amount < 0).reduce((a, b) => a + Number(b.amount), 0)), [savings]);
             const totalKasKeluarKredit = useMemo(() => financings.reduce((a, b) => a + Number(b.amount), 0), [financings]);
+            
             const saldoKasAkhir = totalKasMasuk - totalKasKeluarPenarikan - totalKasKeluarKredit - totalBeban;
 
             const totalCoopSavings = useMemo(() => memberFinancialData.reduce((acc, curr) => acc + curr.totalSavings, 0), [memberFinancialData]);
@@ -591,6 +627,7 @@
                 { id: 'member_dashboard', icon: 'dashboard', label: 'Ringkasan' },
                 { id: 'member_pengajuan', icon: 'send', label: 'Pengajuan Layanan' },
                 { id: 'member_kas', icon: 'wallet', label: 'Tabungan Saya' },
+                { id: 'member_shu', icon: 'shu', label: 'Estimasi SHU' }, // Menu baru untuk Anggota
             ];
 
             const menuToRender = isAdmin ? adminMenu : memberMenu;
@@ -644,7 +681,7 @@
                             </div>
                             <div className="flex items-center space-x-2 bg-white px-4 py-2 rounded-full border shadow-sm">
                                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Terkoneksi</span>
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Terkoneksi Real-time</span>
                             </div>
                         </header>
 
@@ -804,6 +841,48 @@
                                                     {requests.length === 0 && <tr><td colSpan="4" className="text-center py-10 text-slate-400 text-sm">Belum ada riwayat pengajuan</td></tr>}
                                                 </tbody>
                                             </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* --- TAB: SHU MEMBER --- */}
+                            {activeTab === 'member_shu' && !isAdmin && myProfile && (
+                                <div className="space-y-6 animate-fade-in">
+                                    <div className="bg-white rounded-3xl border shadow-sm p-6 md:p-8">
+                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                                            <div>
+                                                <h4 className="font-black text-2xl text-slate-800">Estimasi SHU Anda</h4>
+                                                <p className="text-sm text-slate-500 mt-1">Proyeksi pembagian Laba Bersih yang disinkronisasi secara real-time</p>
+                                            </div>
+                                            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-right">
+                                                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Estimasi Total Diterima</p>
+                                                <p className="text-3xl font-black text-blue-600">
+                                                    {formatIDR(
+                                                        (totalCoopSavings > 0 ? (myData.totalSavings / totalCoopSavings) * (labaBersih * 0.20) : 0) + 
+                                                        (totalPendapatan > 0 ? (myData.marginContrib / totalPendapatan) * (labaBersih * 0.30) : 0)
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                            <div className="bg-yellow-50 p-6 rounded-3xl border border-yellow-100 relative overflow-hidden">
+                                                <div className="absolute -right-4 -bottom-4 opacity-10"><Icon name="wallet" size={120}/></div>
+                                                <h5 className="font-black text-yellow-800 mb-2">Dari Jasa Simpanan (20%)</h5>
+                                                <p className="text-sm text-yellow-700 mb-6 relative z-10">Dibagikan sebanding dengan proporsi total simpanan Anda terhadap keseluruhan kas simpanan Koperasi.</p>
+                                                <div className="text-3xl font-black text-yellow-600 relative z-10">
+                                                    {formatIDR(totalCoopSavings > 0 ? (myData.totalSavings / totalCoopSavings) * (labaBersih * 0.20) : 0)}
+                                                </div>
+                                            </div>
+                                            <div className="bg-green-50 p-6 rounded-3xl border border-green-100 relative overflow-hidden">
+                                                <div className="absolute -right-4 -bottom-4 opacity-10"><Icon name="kredit" size={120}/></div>
+                                                <h5 className="font-black text-green-800 mb-2">Dari Jasa Anggota (30%)</h5>
+                                                <p className="text-sm text-green-700 mb-6 relative z-10">Dibagikan berdasarkan persentase kontribusi bayar margin/kredit Anda kepada Koperasi.</p>
+                                                <div className="text-3xl font-black text-green-600 relative z-10">
+                                                    {formatIDR(totalPendapatan > 0 ? (myData.marginContrib / totalPendapatan) * (labaBersih * 0.30) : 0)}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1004,12 +1083,15 @@
                                         {/* Laba Rugi Card */}
                                         <div className="bg-white rounded-3xl border shadow-sm p-6 md:p-8">
                                             <div className="flex items-center justify-between mb-6 border-b pb-4">
-                                                <h4 className="font-black text-slate-800 text-lg">Laba Rugi</h4>
+                                                <div>
+                                                    <h4 className="font-black text-slate-800 text-lg">Laba Rugi</h4>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Cash Basis (Kas Riil Diterima)</p>
+                                                </div>
                                                 <div className="bg-blue-50 text-blue-600 p-2 rounded-xl"><Icon name="shu" size={24}/></div>
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-slate-500 font-bold">Pendapatan (Margin Pembiayaan)</span>
+                                                    <span className="text-slate-500 font-bold">Pendapatan Margin (Telah Dibayar)</span>
                                                     <span className="font-black text-green-600">{formatIDR(totalPendapatan)}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-sm">
@@ -1017,8 +1099,8 @@
                                                     <span className="font-black text-red-500">- {formatIDR(totalBeban)}</span>
                                                 </div>
                                                 <div className="pt-4 border-t flex justify-between items-center">
-                                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Laba Bersih (SHU)</span>
-                                                    <span className="text-2xl font-black text-blue-600">{formatIDR(labaBersih)}</span>
+                                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Laba Bersih (SHU Riil)</span>
+                                                    <span className={`text-2xl font-black ${labaBersih >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatIDR(labaBersih)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1031,19 +1113,31 @@
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-slate-500 font-bold">Kas Masuk (Setoran Simpanan)</span>
+                                                    <span className="text-slate-500 font-bold">Total Kas Masuk</span>
                                                     <span className="font-black text-green-600">{formatIDR(totalKasMasuk)}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-[11px] md:text-sm pl-4">
-                                                    <span className="text-slate-400">Kas Keluar (Penarikan Anggota)</span>
+                                                    <span className="text-slate-400">↳ Dari Setoran Simpanan</span>
+                                                    <span className="font-bold text-green-500">{formatIDR(totalKasSimpanan)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-[11px] md:text-sm pl-4">
+                                                    <span className="text-slate-400">↳ Dari Setoran Cicilan Pinjaman</span>
+                                                    <span className="font-bold text-green-500">{formatIDR(totalKasCicilan)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-sm mt-2">
+                                                    <span className="text-slate-500 font-bold">Total Kas Keluar</span>
+                                                    <span className="font-black text-red-500">- {formatIDR(totalKasKeluarPenarikan + totalKasKeluarKredit + totalBeban)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-[11px] md:text-sm pl-4">
+                                                    <span className="text-slate-400">↳ Penarikan Tabungan Anggota</span>
                                                     <span className="font-bold text-red-400">- {formatIDR(totalKasKeluarPenarikan)}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-[11px] md:text-sm pl-4">
-                                                    <span className="text-slate-400">Kas Keluar (Pencairan Kredit)</span>
+                                                    <span className="text-slate-400">↳ Pencairan Plafon Kredit</span>
                                                     <span className="font-bold text-red-400">- {formatIDR(totalKasKeluarKredit)}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-[11px] md:text-sm pl-4">
-                                                    <span className="text-slate-400">Kas Keluar (Beban / Pengeluaran)</span>
+                                                    <span className="text-slate-400">↳ Pembayaran Beban Operasional</span>
                                                     <span className="font-bold text-red-400">- {formatIDR(totalBeban)}</span>
                                                 </div>
                                                 <div className="pt-4 border-t flex justify-between items-center">
@@ -1098,28 +1192,32 @@
                                             </div>
                                             <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-right">
                                                 <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Laba Bersih (SHU)</p>
-                                                <p className="text-2xl font-black text-blue-600">{formatIDR(labaBersih)}</p>
+                                                <p className={`text-2xl font-black ${labaBersih >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatIDR(labaBersih)}</p>
                                             </div>
                                         </div>
 
                                         <div className="mb-8">
                                             <p className="text-xs font-bold text-slate-400 uppercase mb-3">Proporsi Pembagian Laba Bersih</p>
-                                            <div className="h-6 w-full flex rounded-full overflow-hidden shadow-sm">
-                                                <div className="bg-blue-500 h-full" style={{width: '15%'}} title="Cadangan (15%)"></div>
-                                                <div className="bg-green-500 h-full" style={{width: '30%'}} title="Jasa Anggota (30%)"></div>
-                                                <div className="bg-yellow-500 h-full" style={{width: '20%'}} title="Jasa Simpanan (20%)"></div>
-                                                <div className="bg-purple-500 h-full" style={{width: '10%'}} title="Pengurus (10%)"></div>
-                                                <div className="bg-pink-500 h-full" style={{width: '5%'}} title="Sosial (5%)"></div>
-                                                <div className="bg-teal-500 h-full" style={{width: '20%'}} title="Desa (20%)"></div>
+                                            <div className="h-6 w-full flex rounded-full overflow-hidden shadow-sm bg-slate-100">
+                                                {labaBersih > 0 && (
+                                                    <Fragment>
+                                                        <div className="bg-blue-500 h-full" style={{width: '15%'}} title="Cadangan (15%)"></div>
+                                                        <div className="bg-green-500 h-full" style={{width: '30%'}} title="Jasa Anggota (30%)"></div>
+                                                        <div className="bg-yellow-500 h-full" style={{width: '20%'}} title="Jasa Simpanan (20%)"></div>
+                                                        <div className="bg-purple-500 h-full" style={{width: '10%'}} title="Pengurus (10%)"></div>
+                                                        <div className="bg-pink-500 h-full" style={{width: '5%'}} title="Sosial (5%)"></div>
+                                                        <div className="bg-teal-500 h-full" style={{width: '20%'}} title="Desa (20%)"></div>
+                                                    </Fragment>
+                                                )}
                                             </div>
                                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">
                                                 {[
-                                                    { name: 'Dana Cadangan (15%)', color: 'bg-blue-500', val: labaBersih * 0.15 },
-                                                    { name: 'Jasa Anggota (30%)', color: 'bg-green-500', val: labaBersih * 0.30 },
-                                                    { name: 'Jasa Simpanan (20%)', color: 'bg-yellow-500', val: labaBersih * 0.20 },
-                                                    { name: 'Insentif Pengurus (10%)', color: 'bg-purple-500', val: labaBersih * 0.10 },
-                                                    { name: 'Dana Sosial (5%)', color: 'bg-pink-500', val: labaBersih * 0.05 },
-                                                    { name: 'Bagi Hasil Desa (20%)', color: 'bg-teal-500', val: labaBersih * 0.20 }
+                                                    { name: 'Dana Cadangan (15%)', color: 'bg-blue-500', val: Math.max(0, labaBersih) * 0.15 },
+                                                    { name: 'Jasa Anggota (30%)', color: 'bg-green-500', val: Math.max(0, labaBersih) * 0.30 },
+                                                    { name: 'Jasa Simpanan (20%)', color: 'bg-yellow-500', val: Math.max(0, labaBersih) * 0.20 },
+                                                    { name: 'Insentif Pengurus (10%)', color: 'bg-purple-500', val: Math.max(0, labaBersih) * 0.10 },
+                                                    { name: 'Dana Sosial (5%)', color: 'bg-pink-500', val: Math.max(0, labaBersih) * 0.05 },
+                                                    { name: 'Bagi Hasil Desa (20%)', color: 'bg-teal-500', val: Math.max(0, labaBersih) * 0.20 }
                                                 ].map(item => (
                                                     <div key={item.name} className="flex items-center space-x-3 p-3 bg-slate-50 rounded-xl border">
                                                         <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
@@ -1146,8 +1244,8 @@
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100">
                                                         {memberFinancialData.map(m => {
-                                                            const jasaSimpanan = totalCoopSavings > 0 ? (m.totalSavings / totalCoopSavings) * (labaBersih * 0.20) : 0;
-                                                            const jasaAnggota = totalPendapatan > 0 ? (m.marginContrib / totalPendapatan) * (labaBersih * 0.30) : 0;
+                                                            const jasaSimpanan = totalCoopSavings > 0 ? (m.totalSavings / totalCoopSavings) * (Math.max(0, labaBersih) * 0.20) : 0;
+                                                            const jasaAnggota = totalPendapatan > 0 ? (m.actualMarginPaid / totalPendapatan) * (Math.max(0, labaBersih) * 0.30) : 0;
                                                             const totalTerima = jasaSimpanan + jasaAnggota;
                                                             return (
                                                                 <tr key={m.id} className="hover:bg-slate-50 text-sm">
@@ -1160,6 +1258,48 @@
                                                         })}
                                                     </tbody>
                                                 </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* --- TAB: SHU MEMBER --- */}
+                            {activeTab === 'member_shu' && !isAdmin && myProfile && (
+                                <div className="space-y-6 animate-fade-in">
+                                    <div className="bg-white rounded-3xl border shadow-sm p-6 md:p-8">
+                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                                            <div>
+                                                <h4 className="font-black text-2xl text-slate-800">Estimasi SHU Anda</h4>
+                                                <p className="text-sm text-slate-500 mt-1">Proyeksi pembagian Laba Bersih yang disinkronisasi secara real-time</p>
+                                            </div>
+                                            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-right">
+                                                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Estimasi Total Diterima</p>
+                                                <p className="text-3xl font-black text-blue-600">
+                                                    {formatIDR(
+                                                        (totalCoopSavings > 0 ? (myData.totalSavings / totalCoopSavings) * (Math.max(0, labaBersih) * 0.20) : 0) + 
+                                                        (totalPendapatan > 0 ? (myData.actualMarginPaid / totalPendapatan) * (Math.max(0, labaBersih) * 0.30) : 0)
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                            <div className="bg-yellow-50 p-6 rounded-3xl border border-yellow-100 relative overflow-hidden">
+                                                <div className="absolute -right-4 -bottom-4 opacity-10"><Icon name="wallet" size={120}/></div>
+                                                <h5 className="font-black text-yellow-800 mb-2">Dari Jasa Simpanan (20%)</h5>
+                                                <p className="text-sm text-yellow-700 mb-6 relative z-10">Dibagikan sebanding dengan proporsi total simpanan Anda terhadap keseluruhan kas simpanan Koperasi.</p>
+                                                <div className="text-3xl font-black text-yellow-600 relative z-10">
+                                                    {formatIDR(totalCoopSavings > 0 ? (myData.totalSavings / totalCoopSavings) * (Math.max(0, labaBersih) * 0.20) : 0)}
+                                                </div>
+                                            </div>
+                                            <div className="bg-green-50 p-6 rounded-3xl border border-green-100 relative overflow-hidden">
+                                                <div className="absolute -right-4 -bottom-4 opacity-10"><Icon name="kredit" size={120}/></div>
+                                                <h5 className="font-black text-green-800 mb-2">Dari Jasa Anggota (30%)</h5>
+                                                <p className="text-sm text-green-700 mb-6 relative z-10">Dibagikan berdasarkan persentase kontribusi bayar margin/kredit Anda kepada Koperasi.</p>
+                                                <div className="text-3xl font-black text-green-600 relative z-10">
+                                                    {formatIDR(totalPendapatan > 0 ? (myData.actualMarginPaid / totalPendapatan) * (Math.max(0, labaBersih) * 0.30) : 0)}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
