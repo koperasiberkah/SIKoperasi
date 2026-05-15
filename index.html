@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sikop Digital - Pendaftaran Online & Portal</title>
+    <title>Koperasi Santri - Pendaftaran Online & Portal</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,6 +17,12 @@
     
     <!-- Supabase JS -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+    <!-- SheetJS (Excel) -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <!-- html2canvas (Export to PNG) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -97,7 +103,10 @@
                 bell: <Fragment><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></Fragment>,
                 send: <Fragment><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></Fragment>,
                 check: <Fragment><polyline points="20 6 9 17 4 12"></polyline></Fragment>,
-                receipt: <Fragment><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1Z"></path><path d="M16 8h-6"></path><path d="M16 12h-8"></path><path d="M16 16h-8"></path></Fragment>
+                receipt: <Fragment><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1Z"></path><path d="M16 8h-6"></path><path d="M16 12h-8"></path><path d="M16 16h-8"></path></Fragment>,
+                download: <Fragment><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></Fragment>,
+                settings: <Fragment><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></Fragment>,
+                trash: <Fragment><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></Fragment>
             };
             return (
                 <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -115,6 +124,12 @@
             const [isAdmin, setIsAdmin] = useState(false);
             const [myProfile, setMyProfile] = useState(null);
             
+            // State Pengaturan Dinamis
+            const [coopName, setCoopName] = useState('Koperasi Santri');
+            const [coopLogo, setCoopLogo] = useState('https://raw.githubusercontent.com/koperasiberkah/SIKoperasi/refs/heads/main/LOGO%20SKB.png');
+            const [adminList, setAdminList] = useState([]);
+            const [newAdmin, setNewAdmin] = useState({ email: '', role: 'Admin Standar' });
+
             // State UI Login / Register
             const [isRegistering, setIsRegistering] = useState(false);
             const [loginForm, setLoginForm] = useState({ email: '', password: '' });
@@ -133,7 +148,7 @@
             const [savings, setSavings] = useState([]);
             const [financings, setFinancings] = useState([]);
             const [requests, setRequests] = useState([]);
-            const [expenses, setExpenses] = useState([]); // State Pengeluaran Beban
+            const [expenses, setExpenses] = useState([]);
 
             // State Form
             const [savingForm, setSavingForm] = useState({ memberId: '', pokok: 0, wajib: 0, sukarela: 0, cicilan: 0 });
@@ -149,7 +164,7 @@
             const formatIDR = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val || 0);
 
             // ==========================================
-            // 4. EFEK & PENGAMBILAN DATA (REAL-TIME LISTENER)
+            // 4. EFEK & PENGAMBILAN DATA (HTTP POLLING REAL-TIME)
             // ==========================================
             useEffect(() => {
                 supabase.auth.getSession().then(({ data: { session } }) => {
@@ -163,20 +178,17 @@
                 return () => subscription.unsubscribe();
             }, []);
 
-            // EFEK REAL-TIME SUPABASE: Akan merefresh data secara instan saat ada perubahan di database
             useEffect(() => {
                 if (!session) return;
                 
                 const email = session.user.email;
-                const adminCheck = email.includes('admin@');
+                const checkIsAdmin = email.includes('admin@') || adminList.some(a => a.email === email);
 
                 const refreshData = () => {
-                    if (adminCheck) fetchAdminData();
+                    if (checkIsAdmin) fetchAdminData();
                     else fetchMemberData(email);
                 };
 
-                // Fallback sinkronisasi otomatis karena WebSocket diblokir di environment Canvas
-                // Menggunakan metode Polling (Refresh data di latar belakang setiap 5 detik)
                 const intervalId = setInterval(() => {
                     refreshData();
                 }, 5000);
@@ -184,16 +196,35 @@
                 return () => {
                     clearInterval(intervalId);
                 };
-            }, [session]);
+            }, [session, adminList]);
 
             const handleSession = async (sessionData) => {
                 setSession(sessionData);
                 if (sessionData) {
                     const email = sessionData.user.email;
-                    const adminCheck = email.includes('admin@');
-                    setIsAdmin(adminCheck);
                     
-                    if (adminCheck) {
+                    // 1. Load Data Profil & Pengaturan Terlebih Dahulu
+                    try {
+                        const { data: settingsData } = await supabase.from('settings').select('*').eq('id', 1).single();
+                        if (settingsData) {
+                            setCoopName(settingsData.name || 'Koperasi Santri');
+                            setCoopLogo(settingsData.logo_url || 'https://raw.githubusercontent.com/koperasiberkah/SIKoperasi/refs/heads/main/LOGO%20SKB.png');
+                        }
+                    } catch(e) { console.log('Tabel settings belum ada'); }
+
+                    // 2. Cek Otoritas Admin
+                    let checkIsAdmin = email.includes('admin@');
+                    try {
+                        const { data: adminData } = await supabase.from('admins').select('*');
+                        if (adminData) {
+                            setAdminList(adminData);
+                            if (adminData.some(a => a.email === email)) checkIsAdmin = true;
+                        }
+                    } catch(e) { console.log('Tabel admins belum ada'); }
+                    
+                    setIsAdmin(checkIsAdmin);
+                    
+                    if (checkIsAdmin) {
                         setActiveTab('dashboard');
                         fetchAdminData();
                     } else {
@@ -216,6 +247,16 @@
                 if (finRes.data) setFinancings(finRes.data);
                 if (reqRes.data) setRequests(reqRes.data);
                 if (expRes.data) setExpenses(expRes.data);
+
+                // Sinkronisasi Admin Secara Berkala (Diperbaiki)
+                try {
+                    const { data: admData, error } = await supabase.from('admins').select('*');
+                    if (admData && !error) {
+                        setAdminList(admData);
+                    }
+                } catch (err) {
+                    console.log('Gagal memuat data admin atau tabel belum ada:', err);
+                }
             };
 
             const fetchMemberData = async (email) => {
@@ -249,9 +290,17 @@
                     return;
                 }
 
-                const { error } = await supabase.auth.signInWithPassword(loginForm);
-                if (error) setAuthError("Email atau Password salah!");
-                setAuthLoading(false);
+                try {
+                    const { error } = await supabase.auth.signInWithPassword(loginForm);
+                    if (error) {
+                        setAuthError(error.message || "Email atau Password salah!");
+                    }
+                } catch (err) {
+                    console.error("Fetch error:", err);
+                    setAuthError("Koneksi ke server gagal (Failed to fetch). Pastikan internet stabil atau cek apakah Project Supabase Anda sedang 'Paused'.");
+                } finally {
+                    setAuthLoading(false);
+                }
             };
 
             const handleRegister = async (e) => {
@@ -308,10 +357,16 @@
             };
 
             const handleLogout = async () => {
-                await supabase.auth.signOut();
-                setSession(null);
-                setMyProfile(null);
-                setMembers([]); setSavings([]); setFinancings([]); setRequests([]); setExpenses([]);
+                try {
+                    await supabase.auth.signOut();
+                } catch (err) {
+                    console.error("Logout error:", err);
+                } finally {
+                    setSession(null);
+                    setMyProfile(null);
+                    setIsAdmin(false);
+                    setMembers([]); setSavings([]); setFinancings([]); setRequests([]); setExpenses([]);
+                }
             };
 
             // ==========================================
@@ -324,17 +379,15 @@
                     const p = mSavings.filter(s => s.type === 'Pokok').reduce((a, b) => a + Number(b.amount), 0);
                     const w = mSavings.filter(s => s.type === 'Wajib').reduce((a, b) => a + Number(b.amount), 0);
                     const s = mSavings.filter(s => s.type === 'Sukarela').reduce((a, b) => a + Number(b.amount), 0);
-                    const c = mSavings.filter(s => s.type === 'Cicilan').reduce((a, b) => a + Number(b.amount), 0); // Total cicilan masuk
+                    const c = mSavings.filter(s => s.type === 'Cicilan').reduce((a, b) => a + Number(b.amount), 0);
                     
                     const mCredits = financings.filter(f => f.member_id === member.id);
                     const angsuran = mCredits.reduce((a, b) => a + Number(b.monthly), 0);
                     
-                    // Total Proyeksi Margin & Plafon
                     const marginContrib = mCredits.reduce((acc, curr) => acc + (Number(curr.amount) * (Number(curr.margin_percent) / 100) * Number(curr.tenor)), 0);
                     const totalPlafon = mCredits.reduce((acc, curr) => acc + Number(curr.amount), 0);
                     const totalPayable = totalPlafon + marginContrib;
 
-                    // Pendapatan Riil (Porsi Margin dari cicilan yang sudah dibayar secara kas)
                     const marginRatio = totalPayable > 0 ? (marginContrib / totalPayable) : 0;
                     const actualMarginPaid = c * marginRatio;
 
@@ -357,9 +410,180 @@
             
             const saldoKasAkhir = totalKasMasuk - totalKasKeluarPenarikan - totalKasKeluarKredit - totalBeban;
 
+            // Neraca Calculations (Aktiva = Pasiva)
+            const totalPokok = useMemo(() => savings.filter(s => s.type === 'Pokok').reduce((a, b) => a + Number(b.amount), 0), [savings]);
+            const totalWajib = useMemo(() => savings.filter(s => s.type === 'Wajib').reduce((a, b) => a + Number(b.amount), 0), [savings]);
+            const totalSukarelaMasuk = useMemo(() => savings.filter(s => s.type === 'Sukarela' && s.amount > 0).reduce((a, b) => a + Number(b.amount), 0), [savings]);
+            const simpananSukarelaBersih = totalSukarelaMasuk - totalKasKeluarPenarikan;
+
+            const pengembalianPokok = totalKasCicilan - totalPendapatan;
+            const piutangKredit = totalKasKeluarKredit - pengembalianPokok;
+
+            const totalAktiva = saldoKasAkhir + piutangKredit;
+            const totalPasiva = simpananSukarelaBersih + totalPokok + totalWajib + labaBersih;
+
             const totalCoopSavings = useMemo(() => memberFinancialData.reduce((acc, curr) => acc + curr.totalSavings, 0), [memberFinancialData]);
             const myData = memberFinancialData[0] || {};
             const pendingRequestsCount = requests.filter(r => r.status === 'Menunggu').length;
+
+            // ==========================================
+            // FITUR EXCEL DOWNLOAD (MULTI-SHEET)
+            // ==========================================
+            const handleDownloadExcel = () => {
+                if (typeof XLSX === 'undefined') {
+                    setAlertMessage("Library Excel sedang dimuat, silakan coba beberapa detik lagi.");
+                    return;
+                }
+
+                // Membuat Workbook (File Excel Baru)
+                const wb = XLSX.utils.book_new();
+
+                // 1. SHEET: LABA RUGI
+                const dataLabaRugi = [
+                    [`LAPORAN LABA RUGI (CASH BASIS) - ${coopName.toUpperCase()}`],
+                    [],
+                    ["Deskripsi", "Nominal (Rp)"],
+                    ["Pendapatan Margin (Telah Dibayar)", totalPendapatan],
+                    ["Beban Operasional & Lainnya", -totalBeban],
+                    ["Laba Bersih (SHU Riil)", labaBersih]
+                ];
+                const wsLabaRugi = XLSX.utils.aoa_to_sheet(dataLabaRugi);
+                XLSX.utils.book_append_sheet(wb, wsLabaRugi, "Laba Rugi");
+
+                // 2. SHEET: ARUS KAS
+                const dataArusKas = [
+                    [`LAPORAN ARUS KAS (CASH FLOW) - ${coopName.toUpperCase()}`],
+                    [],
+                    ["Deskripsi", "Nominal (Rp)"],
+                    ["Kas Masuk (Setoran Simpanan)", totalKasSimpanan],
+                    ["Kas Masuk (Setoran Cicilan)", totalKasCicilan],
+                    ["Kas Keluar (Penarikan Anggota)", -totalKasKeluarPenarikan],
+                    ["Kas Keluar (Pencairan Kredit)", -totalKasKeluarKredit],
+                    ["Kas Keluar (Beban Pengeluaran)", -totalBeban],
+                    ["Saldo Kas Tunai Akhir", saldoKasAkhir]
+                ];
+                const wsArusKas = XLSX.utils.aoa_to_sheet(dataArusKas);
+                XLSX.utils.book_append_sheet(wb, wsArusKas, "Arus Kas");
+
+                // 3. SHEET: NERACA
+                const dataNeraca = [
+                    [`NERACA KEUANGAN KOPERASI - ${coopName.toUpperCase()}`],
+                    [],
+                    ["AKTIVA", "Nominal (Rp)"],
+                    ["Kas Tunai & Bank", saldoKasAkhir],
+                    ["Piutang Pembiayaan Anggota", piutangKredit],
+                    ["TOTAL AKTIVA", totalAktiva],
+                    [],
+                    ["PASIVA", "Nominal (Rp)"],
+                    ["Kewajiban (Simpanan Sukarela Netto)", simpananSukarelaBersih],
+                    ["Ekuitas (Simpanan Pokok)", totalPokok],
+                    ["Ekuitas (Simpanan Wajib)", totalWajib],
+                    ["Ekuitas (SHU Berjalan)", labaBersih],
+                    ["TOTAL PASIVA", totalPasiva]
+                ];
+                const wsNeraca = XLSX.utils.aoa_to_sheet(dataNeraca);
+                XLSX.utils.book_append_sheet(wb, wsNeraca, "Neraca");
+
+                // 4. SHEET: DATA ANGGOTA
+                const dataAnggota = [
+                    ["RINCIAN FINANSIAL PER ANGGOTA"],
+                    [],
+                    ["Nama Anggota", "ID Anggota", "Simpanan Pokok", "Simpanan Wajib", "Simpanan Sukarela", "Total Simpanan", "Tagihan Cicilan"],
+                    ...memberFinancialData.map(m => [
+                        m.name, 
+                        m.id, 
+                        m.pokok, 
+                        m.wajib, 
+                        m.sukarela, 
+                        m.totalSavings, 
+                        m.totalAngsuran
+                    ])
+                ];
+                const wsAnggota = XLSX.utils.aoa_to_sheet(dataAnggota);
+                XLSX.utils.book_append_sheet(wb, wsAnggota, "Data Anggota");
+
+                // Mengekspor File .xlsx
+                XLSX.writeFile(wb, `Laporan_Keuangan_${coopName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`);
+            };
+
+            // ==========================================
+            // FITUR DOWNLOAD ID CARD (PNG HIGH-RES)
+            // ==========================================
+            const handleDownloadIDCard = async () => {
+                const cardElement = document.getElementById('id-card-element');
+                if (!cardElement) return;
+
+                setAlertMessage("Sedang merender ID Card beresolusi tinggi...");
+
+                try {
+                    const canvas = await window.html2canvas(cardElement, {
+                        scale: 4, // Skala 4x untuk kualitas cetak yang tajam (High Definition)
+                        useCORS: true, // Mengizinkan pemuatan gambar dari link luar (Supabase & QR Code)
+                        backgroundColor: null
+                    });
+
+                    const imgData = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.download = `ID_Card_${printMember.name.replace(/\s+/g, '_')}.png`;
+                    link.href = imgData;
+                    link.click();
+                    
+                    setAlertMessage(null); // Menutup notifikasi setelah selesai
+                } catch (error) {
+                    console.error("Error rendering canvas:", error);
+                    setAlertMessage("Gagal menyimpan gambar. Pastikan koneksi stabil.");
+                }
+            };
+
+            // ==========================================
+            // LOGIKA RENDER NAMA KOPERASI (SPLIT WARNA)
+            // ==========================================
+            const renderCoopName = () => {
+                const words = coopName.split(' ');
+                if (words.length > 1) {
+                    return <span className="font-black text-lg text-slate-800 tracking-tighter uppercase leading-tight">{words[0]}<br/><span className="text-amber-500">{words.slice(1).join(' ')}</span></span>;
+                }
+                return <span className="font-black text-lg text-slate-800 tracking-tighter uppercase leading-tight">{coopName}</span>;
+            }
+
+            // ==========================================
+            // FUNGSI UPDATE PENGATURAN (ADMIN)
+            // ==========================================
+            const handleUpdateSettings = async () => {
+                const { error } = await supabase.from('settings').upsert({ id: 1, name: coopName, logo_url: coopLogo });
+                if (!error) {
+                    setAlertMessage("Profil koperasi berhasil diperbarui!");
+                } else {
+                    setAlertMessage(`Gagal menyimpan: Pastikan Anda sudah membuat tabel 'settings' di database. Detail Error: ${error.message}`);
+                }
+            };
+
+            const handleAddAdmin = async () => {
+                if (!newAdmin.email) return;
+                const { error } = await supabase.from('admins').insert([{ email: newAdmin.email, role: newAdmin.role }]);
+                if (!error) {
+                    setAlertMessage(`Email ${newAdmin.email} berhasil diberikan hak akses ${newAdmin.role}!`);
+                    setNewAdmin({ email: '', role: 'Admin Standar' });
+                    // Refresh data
+                    const { data } = await supabase.from('admins').select('*');
+                    if (data) setAdminList(data);
+                } else {
+                    setAlertMessage(`Gagal menambah admin: ${error.message}`);
+                }
+            };
+
+            const handleDeleteAdmin = async (id) => {
+                setConfirmAction({
+                    message: "Yakin ingin mencabut hak akses Admin ini?",
+                    onConfirm: async () => {
+                        const { error } = await supabase.from('admins').delete().eq('id', id);
+                        if (!error) {
+                            const { data } = await supabase.from('admins').select('*');
+                            if (data) setAdminList(data);
+                        }
+                    }
+                });
+            };
 
             // ==========================================
             // 7. RENDER HALAMAN LOGIN / REGISTER
@@ -368,12 +592,12 @@
                 return (
                     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 print-hide">
                         <div className={`w-full ${isRegistering ? 'max-w-4xl' : 'max-w-md'} bg-white rounded-[32px] shadow-2xl overflow-hidden animate-fade-in transition-all duration-500`}>
-                            <div className="bg-blue-600 p-8 text-center text-white relative">
-                                <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/30">
-                                    <Icon name="user" size={32} />
+                            <div className="bg-emerald-800 p-8 text-center relative">
+                                <div className="w-24 h-24 bg-white backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-4 border-2 border-amber-400 shadow-lg overflow-hidden">
+                                    <img src={coopLogo} alt="Logo Koperasi" className="w-full h-full object-contain p-2" />
                                 </div>
-                                <h1 className="text-2xl font-black tracking-tight">{isRegistering ? 'Pendaftaran Anggota' : 'Portal Koperasi'}</h1>
-                                <p className="text-blue-200 text-sm mt-2">{isRegistering ? 'Isi data diri Anda dengan lengkap' : 'Silakan login untuk mengakses data Anda'}</p>
+                                <h1 className="text-2xl font-black tracking-tight text-amber-400">{isRegistering ? 'Pendaftaran Anggota' : coopName}</h1>
+                                <p className="text-emerald-100 text-sm mt-2">{isRegistering ? 'Isi data diri Anda dengan lengkap' : 'Silakan login untuk mengakses data Anda'}</p>
                             </div>
                             
                             <div className="p-8">
@@ -383,18 +607,18 @@
                                     <form onSubmit={handleLogin} className="space-y-6">
                                         <div>
                                             <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Email Akun</label>
-                                            <input type="email" required className="w-full p-4 bg-slate-50 rounded-xl border focus:border-blue-500 outline-none font-bold text-slate-700" placeholder="nama@email.com" value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} />
+                                            <input type="email" required className="w-full p-4 bg-slate-50 rounded-xl border focus:border-emerald-600 outline-none font-bold text-slate-700" placeholder="nama@email.com" value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Password</label>
-                                            <input type="password" required className="w-full p-4 bg-slate-50 rounded-xl border focus:border-blue-500 outline-none font-bold text-slate-700" placeholder="••••••••" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} />
+                                            <input type="password" required className="w-full p-4 bg-slate-50 rounded-xl border focus:border-emerald-600 outline-none font-bold text-slate-700" placeholder="••••••••" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} />
                                         </div>
-                                        <button type="submit" disabled={authLoading} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-lg transition-colors shadow-lg shadow-blue-200">
+                                        <button type="submit" disabled={authLoading} className="w-full py-4 bg-emerald-800 hover:bg-emerald-900 text-amber-400 rounded-xl font-black text-lg transition-colors shadow-lg shadow-emerald-200">
                                             {authLoading ? 'Memproses...' : 'MASUK'}
                                         </button>
                                         <div className="text-center pt-4 border-t border-slate-100">
                                             <p className="text-sm text-slate-500 mb-2">Belum memiliki akun Koperasi?</p>
-                                            <button type="button" onClick={() => {setIsRegistering(true); setAuthError('');}} className="text-blue-600 font-black hover:underline">Daftar Anggota Online di sini</button>
+                                            <button type="button" onClick={() => {setIsRegistering(true); setAuthError('');}} className="text-emerald-700 font-black hover:text-emerald-800 hover:underline">Daftar Anggota Online di sini</button>
                                         </div>
                                     </form>
                                 ) : (
@@ -403,18 +627,18 @@
                                             <div className="space-y-6">
                                                 <div className="bg-slate-50 p-6 rounded-2xl border text-center">
                                                     <label className="block text-xs font-bold text-slate-400 uppercase mb-4">Foto Profil (Opsional)</label>
-                                                    <div className="w-32 h-40 mx-auto bg-white border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center relative overflow-hidden group hover:border-blue-400 cursor-pointer transition-colors">
-                                                        {registerForm.photoPreview ? <img src={registerForm.photoPreview} className="w-full h-full object-cover"/> : <Icon name="camera" className="text-slate-300 group-hover:text-blue-400"/>}
+                                                    <div className="w-32 h-40 mx-auto bg-white border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center relative overflow-hidden group hover:border-amber-400 cursor-pointer transition-colors">
+                                                        {registerForm.photoPreview ? <img src={registerForm.photoPreview} className="w-full h-full object-cover"/> : <Icon name="camera" className="text-slate-300 group-hover:text-amber-500"/>}
                                                         <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e)=>{
                                                             const file = e.target.files[0];
                                                             if(file) setRegisterForm({...registerForm, photoFile: file, photoPreview: URL.createObjectURL(file)});
                                                         }} />
                                                     </div>
                                                 </div>
-                                                <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100">
-                                                    <h4 className="text-xs font-black text-blue-800 uppercase mb-4 border-b border-blue-200 pb-2">Buat Akun Login</h4>
-                                                    <input type="email" required placeholder="Email Aktif *" className="w-full p-3 mb-3 bg-white rounded-lg border outline-none text-sm" onChange={e => setRegisterForm({...registerForm, email: e.target.value})} />
-                                                    <input type="password" required placeholder="Password Minimal 6 Huruf *" className="w-full p-3 bg-white rounded-lg border outline-none text-sm" onChange={e => setRegisterForm({...registerForm, password: e.target.value})} />
+                                                <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
+                                                    <h4 className="text-xs font-black text-emerald-800 uppercase mb-4 border-b border-emerald-200 pb-2">Buat Akun Login</h4>
+                                                    <input type="email" required placeholder="Email Aktif *" className="w-full p-3 mb-3 bg-white rounded-lg border outline-none text-sm focus:border-emerald-500" onChange={e => setRegisterForm({...registerForm, email: e.target.value})} />
+                                                    <input type="password" required placeholder="Password Minimal 6 Huruf *" className="w-full p-3 bg-white rounded-lg border outline-none text-sm focus:border-emerald-500" onChange={e => setRegisterForm({...registerForm, password: e.target.value})} />
                                                 </div>
                                             </div>
                                             
@@ -422,35 +646,35 @@
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <div>
                                                         <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Nama Lengkap Sesuai KTP *</label>
-                                                        <input required placeholder="Contoh: Budi Santoso" className="w-full p-3.5 bg-slate-50 rounded-xl border outline-none mt-1 font-semibold" onChange={e => setRegisterForm({...registerForm, name: e.target.value})} />
+                                                        <input required placeholder="Contoh: Budi Santoso" className="w-full p-3.5 bg-slate-50 rounded-xl border outline-none mt-1 font-semibold focus:border-emerald-500" onChange={e => setRegisterForm({...registerForm, name: e.target.value})} />
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Nomor Induk Kependudukan (NIK) *</label>
-                                                        <input required placeholder="16 Digit NIK" className="w-full p-3.5 bg-slate-50 rounded-xl border outline-none mt-1 font-mono" onChange={e => setRegisterForm({...registerForm, nik: e.target.value})} />
+                                                        <input required placeholder="16 Digit NIK" className="w-full p-3.5 bg-slate-50 rounded-xl border outline-none mt-1 font-mono focus:border-emerald-500" onChange={e => setRegisterForm({...registerForm, nik: e.target.value})} />
                                                     </div>
                                                 </div>
                                                 
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div>
                                                         <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Jenis Kelamin</label>
-                                                        <select className="w-full p-3.5 bg-slate-50 rounded-xl border outline-none mt-1 font-semibold" onChange={e => setRegisterForm({...registerForm, gender: e.target.value})}>
+                                                        <select className="w-full p-3.5 bg-slate-50 rounded-xl border outline-none mt-1 font-semibold focus:border-emerald-500" onChange={e => setRegisterForm({...registerForm, gender: e.target.value})}>
                                                             <option value="">Pilih...</option><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option>
                                                         </select>
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Tanggal Lahir *</label>
-                                                        <input type="date" required className="w-full p-3.5 bg-slate-50 rounded-xl border outline-none mt-1" onChange={e => setRegisterForm({...registerForm, birthDate: e.target.value})} />
+                                                        <input type="date" required className="w-full p-3.5 bg-slate-50 rounded-xl border outline-none mt-1 focus:border-emerald-500" onChange={e => setRegisterForm({...registerForm, birthDate: e.target.value})} />
                                                     </div>
                                                 </div>
 
                                                 <div>
                                                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Nomor HP / WhatsApp Aktif</label>
-                                                    <input placeholder="Contoh: 08123456789" className="w-full p-3.5 bg-slate-50 rounded-xl border outline-none mt-1" onChange={e => setRegisterForm({...registerForm, phone: e.target.value})} />
+                                                    <input placeholder="Contoh: 08123456789" className="w-full p-3.5 bg-slate-50 rounded-xl border outline-none mt-1 focus:border-emerald-500" onChange={e => setRegisterForm({...registerForm, phone: e.target.value})} />
                                                 </div>
 
                                                 <div>
                                                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Alamat Domisili Lengkap</label>
-                                                    <textarea required placeholder="Jalan, RT/RW, Kelurahan..." className="w-full p-3.5 bg-slate-50 rounded-xl border outline-none mt-1 h-24 resize-none" onChange={e => setRegisterForm({...registerForm, address: e.target.value})}></textarea>
+                                                    <textarea required placeholder="Jalan, RT/RW, Kelurahan..." className="w-full p-3.5 bg-slate-50 rounded-xl border outline-none mt-1 h-24 resize-none focus:border-emerald-500" onChange={e => setRegisterForm({...registerForm, address: e.target.value})}></textarea>
                                                 </div>
                                             </div>
                                         </div>
@@ -459,7 +683,7 @@
                                             <button type="button" onClick={() => {setIsRegistering(false); setAuthError('');}} className="w-full md:w-1/3 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors">
                                                 Batal
                                             </button>
-                                            <button type="submit" disabled={authLoading} className="w-full md:w-2/3 py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black text-lg transition-colors shadow-lg shadow-green-200">
+                                            <button type="submit" disabled={authLoading} className="w-full md:w-2/3 py-4 bg-emerald-800 hover:bg-emerald-900 text-amber-400 rounded-xl font-black text-lg transition-colors shadow-lg shadow-emerald-200">
                                                 {authLoading ? 'Menyimpan Data...' : 'KIRIM PENDAFTARAN'}
                                             </button>
                                         </div>
@@ -509,7 +733,7 @@
                     setExpenseForm({ category: '', amount: '', notes: '' });
                     setAlertMessage("Pengeluaran beban berhasil dicatat.");
                 } else {
-                    setAlertMessage(`Gagal: ${error.message} (Pastikan Anda sudah membuat tabel 'expenses' di Supabase)`);
+                    setAlertMessage(`Gagal: ${error.message}`);
                 }
             };
 
@@ -619,15 +843,16 @@
                 { id: 'kas', icon: 'wallet', label: 'Setoran Kas' },
                 { id: 'kredit', icon: 'kredit', label: 'Kredit' },
                 { id: 'pengeluaran', icon: 'receipt', label: 'Pengeluaran' },
-                { id: 'laporan', icon: 'file', label: 'Laporan & Kas' },
-                { id: 'shu', icon: 'shu', label: 'SHU' }
+                { id: 'laporan', icon: 'file', label: 'Laporan Keuangan' },
+                { id: 'shu', icon: 'shu', label: 'Distribusi SHU' },
+                { id: 'pengaturan', icon: 'settings', label: 'Pengaturan' }
             ];
 
             const memberMenu = [
                 { id: 'member_dashboard', icon: 'dashboard', label: 'Ringkasan' },
                 { id: 'member_pengajuan', icon: 'send', label: 'Pengajuan Layanan' },
                 { id: 'member_kas', icon: 'wallet', label: 'Tabungan Saya' },
-                { id: 'member_shu', icon: 'shu', label: 'Estimasi SHU' }, // Menu baru untuk Anggota
+                { id: 'member_shu', icon: 'shu', label: 'Estimasi SHU' },
             ];
 
             const menuToRender = isAdmin ? adminMenu : memberMenu;
@@ -638,27 +863,29 @@
                     <aside className={`print-hide fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-200 p-6 z-50 transition-transform md:relative md:translate-x-0 flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                         <div className="flex items-center justify-between mb-8 px-2">
                             <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-blue-200">K</div>
-                                <span className="font-black text-lg text-slate-800 tracking-tighter uppercase">KOPERASI<span className="text-blue-500">SANTRI</span></span>
+                                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200 overflow-hidden border border-slate-100 shrink-0">
+                                    <img src={coopLogo} alt="Logo" className="w-full h-full object-contain p-1" />
+                                </div>
+                                {renderCoopName()}
                             </div>
-                            <button className="md:hidden" onClick={() => setIsSidebarOpen(false)}><Icon name="x" /></button>
+                            <button className="md:hidden text-slate-500" onClick={() => setIsSidebarOpen(false)}><Icon name="x" /></button>
                         </div>
                         
-                        <div className="mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Login Sebagai</p>
+                        <div className="mb-6 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                            <p className="text-[10px] font-black text-emerald-800 uppercase mb-1">Login Sebagai</p>
                             <p className="font-bold text-sm text-slate-700 truncate">{isAdmin ? 'Administrator' : (myProfile?.name || 'Anggota')}</p>
                             <p className="text-[10px] text-slate-500 truncate">{session?.user?.email}</p>
                         </div>
 
                         <nav className="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-2">
                             {menuToRender.map(item => (
-                                <button key={item.id} onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }} className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${activeTab === item.id ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600'}`}>
+                                <button key={item.id} onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }} className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${activeTab === item.id ? 'bg-emerald-800 text-amber-400 shadow-md shadow-emerald-900/20' : 'text-slate-500 hover:bg-emerald-50 hover:text-emerald-700'}`}>
                                     <div className="flex items-center space-x-3">
                                         <Icon name={item.icon} />
                                         <span className="text-sm font-bold">{item.label}</span>
                                     </div>
                                     {item.badge > 0 && (
-                                        <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">{item.badge}</span>
+                                        <span className="bg-amber-500 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded-full">{item.badge}</span>
                                     )}
                                 </button>
                             ))}
@@ -676,11 +903,11 @@
                         {/* HEADER */}
                         <header className="print-hide p-4 md:px-8 md:py-6 flex justify-between items-center bg-white/50 backdrop-blur-md border-b border-slate-200 z-10 sticky top-0">
                             <div className="flex items-center space-x-4">
-                                <button className="md:hidden p-2 text-blue-600 bg-white rounded-lg border shadow-sm" onClick={() => setIsSidebarOpen(true)}><Icon name="menu" /></button>
+                                <button className="md:hidden p-2 text-emerald-700 bg-white rounded-lg border shadow-sm" onClick={() => setIsSidebarOpen(true)}><Icon name="menu" /></button>
                                 <h2 className="text-xl md:text-2xl font-black text-slate-800 capitalize tracking-tight">{activeTab.replace('_', ' ')}</h2>
                             </div>
                             <div className="flex items-center space-x-2 bg-white px-4 py-2 rounded-full border shadow-sm">
-                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Terkoneksi Real-time</span>
                             </div>
                         </header>
@@ -688,6 +915,71 @@
                         {/* CONTENT SCROLL */}
                         <div className="print-hide flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-10 custom-scrollbar">
                             
+                            {/* --- TAB: PENGATURAN ADMIN --- */}
+                            {activeTab === 'pengaturan' && isAdmin && (
+                                <div className="space-y-6 animate-fade-in">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Pengaturan Profil Koperasi */}
+                                        <div className="bg-white rounded-3xl border shadow-sm p-6 md:p-8">
+                                            <h4 className="font-black text-slate-800 mb-6 border-b pb-4 flex items-center"><Icon name="settings" className="mr-2 text-emerald-600"/> Profil Koperasi</h4>
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Nama Koperasi</label>
+                                                    <input type="text" className="w-full p-4 bg-slate-50 rounded-xl border focus:border-emerald-600 outline-none font-bold text-slate-700" value={coopName} onChange={(e) => setCoopName(e.target.value)} />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">URL Logo Koperasi</label>
+                                                    <input type="text" className="w-full p-4 bg-slate-50 rounded-xl border focus:border-emerald-600 outline-none font-bold text-slate-700" value={coopLogo} onChange={(e) => setCoopLogo(e.target.value)} />
+                                                    <p className="text-[10px] mt-1 text-slate-400 font-medium">Masukkan *link* (URL) gambar berformat PNG/JPG untuk logo yang tampil di layar utama dan ID Card.</p>
+                                                </div>
+                                                <button onClick={handleUpdateSettings} className="w-full bg-emerald-800 hover:bg-emerald-900 text-amber-400 px-6 py-4 rounded-xl font-black shadow-lg shadow-emerald-200 transition-colors mt-4">SIMPAN PROFIL</button>
+                                            </div>
+                                        </div>
+
+                                        {/* Pengaturan Manajemen Admin */}
+                                        <div className="bg-white rounded-3xl border shadow-sm p-6 md:p-8">
+                                            <h4 className="font-black text-slate-800 mb-6 border-b pb-4 flex items-center"><Icon name="users" className="mr-2 text-emerald-600"/> Manajemen Admin</h4>
+                                            <div className="space-y-4">
+                                                <div className="flex gap-2">
+                                                    <input type="email" placeholder="Email Pengurus Baru" className="flex-1 p-3 bg-slate-50 rounded-xl border focus:border-emerald-600 outline-none text-sm font-semibold text-slate-700" value={newAdmin.email} onChange={(e) => setNewAdmin({...newAdmin, email: e.target.value})} />
+                                                    <select className="w-1/3 p-3 bg-slate-50 rounded-xl border focus:border-emerald-600 outline-none text-sm font-semibold text-slate-700" value={newAdmin.role} onChange={(e) => setNewAdmin({...newAdmin, role: e.target.value})}>
+                                                        <option>Admin Standar</option>
+                                                        <option>Super Admin</option>
+                                                        <option>Pengawas</option>
+                                                    </select>
+                                                </div>
+                                                <button onClick={handleAddAdmin} className="w-full bg-amber-500 hover:bg-amber-600 text-emerald-900 px-6 py-3 rounded-xl font-black shadow-md transition-colors text-sm">TAMBAH AKSES ADMIN</button>
+                                                
+                                                <div className="mt-6 border-t pt-4">
+                                                    <table className="w-full text-left">
+                                                        <thead className="text-[10px] font-black text-slate-400 uppercase">
+                                                            <tr><th className="pb-2">Email Admin</th><th className="pb-2">Hak Akses</th><th className="pb-2 text-center">Aksi</th></tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100">
+                                                            <tr className="text-sm">
+                                                                <td className="py-3 font-semibold text-slate-700">admin@... (Default)</td>
+                                                                <td className="py-3 text-xs"><span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md font-bold">Pencipta</span></td>
+                                                                <td className="py-3 text-center">-</td>
+                                                            </tr>
+                                                            {adminList.map(a => (
+                                                                <tr key={a.id} className="text-sm hover:bg-slate-50">
+                                                                    <td className="py-3 font-semibold text-slate-700">{a.email}</td>
+                                                                    <td className="py-3 text-xs"><span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-md font-bold whitespace-nowrap">{a.role}</span></td>
+                                                                    <td className="py-3 text-center">
+                                                                        <button onClick={() => handleDeleteAdmin(a.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors"><Icon name="trash" size={16}/></button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                            {adminList.length === 0 && <tr><td colSpan="3" className="text-center py-4 text-xs text-slate-400">Belum ada admin tambahan.</td></tr>}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* --- TAB: DASHBOARD ADMIN --- */}
                             {activeTab === 'dashboard' && isAdmin && (
                                 <div className="space-y-6 animate-fade-in">
@@ -698,21 +990,21 @@
                                         </div>
                                         <div className="bg-white p-6 rounded-3xl border shadow-sm">
                                             <p className="text-xs font-bold text-slate-400 uppercase mb-2">Saldo Kas Terakhir</p>
-                                            <h3 className={`text-3xl font-black ${saldoKasAkhir >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatIDR(saldoKasAkhir)}</h3>
+                                            <h3 className={`text-3xl font-black ${saldoKasAkhir >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatIDR(saldoKasAkhir)}</h3>
                                         </div>
                                         <div className="bg-white p-6 rounded-3xl border shadow-sm">
                                             <p className="text-xs font-bold text-slate-400 uppercase mb-2">Total Simpanan</p>
-                                            <h3 className="text-3xl font-black text-blue-600">{formatIDR(totalCoopSavings)}</h3>
+                                            <h3 className="text-3xl font-black text-amber-500">{formatIDR(totalCoopSavings)}</h3>
                                         </div>
                                         <div className="bg-white p-6 rounded-3xl border shadow-sm">
                                             <p className="text-xs font-bold text-slate-400 uppercase mb-2">Aset Kredit</p>
-                                            <h3 className="text-3xl font-black text-orange-600">{formatIDR(financings.reduce((a,b)=>a+Number(b.amount),0))}</h3>
+                                            <h3 className="text-3xl font-black text-emerald-700">{formatIDR(financings.reduce((a,b)=>a+Number(b.amount),0))}</h3>
                                         </div>
                                     </div>
-                                    <div className="bg-blue-600 p-6 md:p-8 rounded-3xl shadow-lg shadow-blue-200 text-white relative overflow-hidden">
-                                        <div className="absolute -right-4 -top-4 opacity-10"><Icon name="shu" size={120}/></div>
-                                        <p className="text-xs font-bold text-blue-200 uppercase mb-2">Laba Bersih / SHU Berjalan</p>
-                                        <h3 className="text-4xl md:text-5xl font-black">{formatIDR(labaBersih)}</h3>
+                                    <div className="bg-emerald-800 p-6 md:p-8 rounded-3xl shadow-lg shadow-emerald-200/50 text-white relative overflow-hidden">
+                                        <div className="absolute -right-4 -top-4 opacity-10 text-amber-400"><Icon name="shu" size={120}/></div>
+                                        <p className="text-xs font-bold text-amber-400 uppercase mb-2">Laba Bersih / SHU Berjalan</p>
+                                        <h3 className="text-4xl md:text-5xl font-black text-white">{formatIDR(labaBersih)}</h3>
                                     </div>
                                 </div>
                             )}
@@ -721,26 +1013,26 @@
                             {activeTab === 'member_dashboard' && !isAdmin && (
                                 myProfile ? (
                                     <div className="space-y-6 animate-fade-in">
-                                        <div className="bg-gradient-to-r from-blue-700 to-blue-500 rounded-[32px] p-8 text-white shadow-xl shadow-blue-200 relative overflow-hidden">
+                                        <div className="bg-gradient-to-r from-emerald-900 to-emerald-700 border border-amber-500/30 rounded-[32px] p-8 text-white shadow-xl shadow-emerald-900/20 relative overflow-hidden">
                                             <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
                                                 <div className="flex items-center space-x-6">
-                                                    <div className="w-20 h-20 bg-white/20 rounded-full border-2 border-white/40 flex items-center justify-center overflow-hidden">
-                                                        {myProfile.photo_url ? <img src={myProfile.photo_url} className="w-full h-full object-cover"/> : <Icon name="user" size={36}/>}
+                                                    <div className="w-20 h-20 bg-white/10 rounded-full border-2 border-amber-500/50 flex items-center justify-center overflow-hidden">
+                                                        {myProfile.photo_url ? <img src={myProfile.photo_url} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(myProfile.name)}&background=047857&color=fbbf24`; }}/> : <Icon name="user" size={36} className="text-amber-400" />}
                                                     </div>
                                                     <div>
-                                                        <p className="text-blue-100 text-sm font-bold uppercase tracking-wider mb-1">Kartu Anggota Digital</p>
-                                                        <h2 className="text-2xl font-black">{myProfile.name}</h2>
-                                                        <p className="text-blue-200 font-mono text-sm">{myProfile.id} • {myProfile.status}</p>
+                                                        <p className="text-emerald-100 text-sm font-bold uppercase tracking-wider mb-1">Kartu Anggota Digital</p>
+                                                        <h2 className="text-2xl font-black text-amber-400">{myProfile.name}</h2>
+                                                        <p className="text-amber-200/80 font-mono text-sm">{myProfile.id} • {myProfile.status}</p>
                                                     </div>
                                                 </div>
-                                                <div className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/20 w-full md:w-auto text-center md:text-right">
-                                                    <p className="text-xs font-bold text-blue-200 uppercase mb-1">Total Tabungan Anda</p>
+                                                <div className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/10 w-full md:w-auto text-center md:text-right">
+                                                    <p className="text-xs font-bold text-emerald-200 uppercase mb-1">Total Tabungan Anda</p>
                                                     <p className="text-3xl font-black text-white">{formatIDR(myData.totalSavings)}</p>
                                                 </div>
                                             </div>
                                             
                                             <div className="mt-6 flex justify-center md:justify-start relative z-10">
-                                                <button onClick={() => setPrintMember(myProfile)} className="bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors text-sm shadow-sm">
+                                                <button onClick={() => setPrintMember(myProfile)} className="bg-emerald-800/80 hover:bg-emerald-900 border border-emerald-600 backdrop-blur-md text-amber-400 px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors text-sm shadow-sm">
                                                     <Icon name="print" size={18}/> Cetak Fisik ID Card
                                                 </button>
                                             </div>
@@ -748,7 +1040,7 @@
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="bg-white rounded-3xl p-6 border shadow-sm">
-                                                <h3 className="font-black text-slate-800 mb-6 border-b pb-4 flex items-center"><Icon name="wallet" className="mr-2 text-green-500"/> Rincian Tabungan</h3>
+                                                <h3 className="font-black text-slate-800 mb-6 border-b pb-4 flex items-center"><Icon name="wallet" className="mr-2 text-emerald-600"/> Rincian Tabungan</h3>
                                                 <div className="space-y-4">
                                                     <div className="flex justify-between items-center"><span className="text-sm font-bold text-slate-500">Simpanan Pokok</span><span className="font-black text-slate-800">{formatIDR(myData.pokok)}</span></div>
                                                     <div className="flex justify-between items-center"><span className="text-sm font-bold text-slate-500">Simpanan Wajib</span><span className="font-black text-slate-800">{formatIDR(myData.wajib)}</span></div>
@@ -756,10 +1048,10 @@
                                                 </div>
                                             </div>
                                             <div className="bg-white rounded-3xl p-6 border shadow-sm">
-                                                <h3 className="font-black text-slate-800 mb-6 border-b pb-4 flex items-center"><Icon name="kredit" className="mr-2 text-orange-500"/> Kewajiban Kredit</h3>
-                                                <div className="flex justify-between items-center p-4 bg-orange-50 rounded-2xl border border-orange-100">
-                                                    <span className="text-sm font-bold text-orange-800">Total Angsuran Bulan Ini</span>
-                                                    <span className="text-xl font-black text-orange-600">{formatIDR(myData.totalAngsuran)}</span>
+                                                <h3 className="font-black text-slate-800 mb-6 border-b pb-4 flex items-center"><Icon name="kredit" className="mr-2 text-amber-500"/> Kewajiban Kredit</h3>
+                                                <div className="flex justify-between items-center p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                                                    <span className="text-sm font-bold text-amber-800">Total Angsuran Bulan Ini</span>
+                                                    <span className="text-xl font-black text-amber-600">{formatIDR(myData.totalAngsuran)}</span>
                                                 </div>
                                                 <p className="text-xs text-slate-400 mt-4 text-center">Silakan lakukan pembayaran ke rekening koperasi sebelum tanggal 10.</p>
                                             </div>
@@ -782,27 +1074,27 @@
                             {activeTab === 'member_pengajuan' && !isAdmin && myProfile && (
                                 <div className="space-y-6 animate-fade-in">
                                     <div className="bg-white rounded-3xl border shadow-sm p-6 md:p-8">
-                                        <h4 className="font-black text-slate-800 mb-6 border-b pb-4 flex items-center"><Icon name="send" className="mr-3 text-blue-500"/> Buat Pengajuan Baru</h4>
+                                        <h4 className="font-black text-slate-800 mb-6 border-b pb-4 flex items-center"><Icon name="send" className="mr-3 text-emerald-600"/> Buat Pengajuan Baru</h4>
                                         <form onSubmit={handleSubmitRequest} className="space-y-5 max-w-2xl">
                                             <div>
                                                 <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Jenis Pengajuan</label>
-                                                <select className="w-full p-4 bg-slate-50 rounded-xl border focus:border-blue-500 outline-none font-bold text-slate-700" value={requestForm.type} onChange={(e)=>setRequestForm({...requestForm, type: e.target.value})}>
+                                                <select className="w-full p-4 bg-slate-50 rounded-xl border focus:border-emerald-600 outline-none font-bold text-slate-700" value={requestForm.type} onChange={(e)=>setRequestForm({...requestForm, type: e.target.value})}>
                                                     <option value="Kredit">Pengajuan Pembiayaan (Kredit)</option>
                                                     <option value="Penarikan">Penarikan Tabungan Sukarela</option>
                                                 </select>
                                                 {requestForm.type === 'Penarikan' && (
-                                                    <p className="text-[10px] font-bold text-orange-500 mt-2">*Saldo Sukarela Anda saat ini: {formatIDR(myData.sukarela)}</p>
+                                                    <p className="text-[10px] font-bold text-amber-500 mt-2">*Saldo Sukarela Anda saat ini: {formatIDR(myData.sukarela)}</p>
                                                 )}
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div>
                                                     <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Nominal (Rp)</label>
-                                                    <input type="number" required className="w-full p-4 bg-slate-50 rounded-xl border focus:border-blue-500 outline-none font-bold text-slate-700" value={requestForm.amount} onChange={(e)=>setRequestForm({...requestForm, amount: Number(e.target.value)})}/>
+                                                    <input type="number" required className="w-full p-4 bg-slate-50 rounded-xl border focus:border-emerald-600 outline-none font-bold text-slate-700" value={requestForm.amount} onChange={(e)=>setRequestForm({...requestForm, amount: Number(e.target.value)})}/>
                                                 </div>
                                                 {requestForm.type === 'Kredit' && (
                                                     <div>
                                                         <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Tenor (Tahun)</label>
-                                                        <select className="w-full p-4 bg-slate-50 rounded-xl border focus:border-blue-500 outline-none font-bold text-slate-700" value={requestForm.tenor} onChange={(e)=>setRequestForm({...requestForm, tenor: Number(e.target.value)})}>
+                                                        <select className="w-full p-4 bg-slate-50 rounded-xl border focus:border-emerald-600 outline-none font-bold text-slate-700" value={requestForm.tenor} onChange={(e)=>setRequestForm({...requestForm, tenor: Number(e.target.value)})}>
                                                             <option value={1}>1 Tahun</option>
                                                             <option value={2}>2 Tahun</option>
                                                             <option value={3}>3 Tahun</option>
@@ -812,9 +1104,9 @@
                                             </div>
                                             <div>
                                                 <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Catatan / Tujuan</label>
-                                                <input type="text" required placeholder={requestForm.type === 'Kredit' ? "Misal: Modal Usaha / Renovasi" : "Keperluan Penarikan"} className="w-full p-4 bg-slate-50 rounded-xl border focus:border-blue-500 outline-none font-bold text-slate-700" value={requestForm.notes} onChange={(e)=>setRequestForm({...requestForm, notes: e.target.value})}/>
+                                                <input type="text" required placeholder={requestForm.type === 'Kredit' ? "Misal: Modal Usaha / Renovasi" : "Keperluan Penarikan"} className="w-full p-4 bg-slate-50 rounded-xl border focus:border-emerald-600 outline-none font-bold text-slate-700" value={requestForm.notes} onChange={(e)=>setRequestForm({...requestForm, notes: e.target.value})}/>
                                             </div>
-                                            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-black shadow-lg shadow-blue-200 transition-colors w-full md:w-auto">
+                                            <button type="submit" className="bg-emerald-800 hover:bg-emerald-900 text-amber-400 px-8 py-4 rounded-xl font-black shadow-lg shadow-emerald-200 transition-colors w-full md:w-auto">
                                                 KIRIM PENGAJUAN
                                             </button>
                                         </form>
@@ -834,7 +1126,7 @@
                                                             <td className="px-6 py-4"><div className="font-bold text-slate-700">{r.type}</div><div className="text-[10px] text-slate-500">{r.notes} {r.type === 'Kredit' ? `(${r.tenor} Thn)` : ''}</div></td>
                                                             <td className="px-6 py-4 text-right font-black text-slate-600">{formatIDR(r.amount)}</td>
                                                             <td className="px-6 py-4 text-center">
-                                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${r.status === 'Menunggu' ? 'bg-orange-100 text-orange-700' : r.status === 'Disetujui' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.status}</span>
+                                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${r.status === 'Menunggu' ? 'bg-amber-100 text-amber-700' : r.status === 'Disetujui' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{r.status}</span>
                                                             </td>
                                                         </tr>
                                                     ))}
@@ -846,54 +1138,12 @@
                                 </div>
                             )}
 
-                            {/* --- TAB: SHU MEMBER --- */}
-                            {activeTab === 'member_shu' && !isAdmin && myProfile && (
-                                <div className="space-y-6 animate-fade-in">
-                                    <div className="bg-white rounded-3xl border shadow-sm p-6 md:p-8">
-                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                                            <div>
-                                                <h4 className="font-black text-2xl text-slate-800">Estimasi SHU Anda</h4>
-                                                <p className="text-sm text-slate-500 mt-1">Proyeksi pembagian Laba Bersih yang disinkronisasi secara real-time</p>
-                                            </div>
-                                            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-right">
-                                                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Estimasi Total Diterima</p>
-                                                <p className="text-3xl font-black text-blue-600">
-                                                    {formatIDR(
-                                                        (totalCoopSavings > 0 ? (myData.totalSavings / totalCoopSavings) * (labaBersih * 0.20) : 0) + 
-                                                        (totalPendapatan > 0 ? (myData.marginContrib / totalPendapatan) * (labaBersih * 0.30) : 0)
-                                                    )}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                                            <div className="bg-yellow-50 p-6 rounded-3xl border border-yellow-100 relative overflow-hidden">
-                                                <div className="absolute -right-4 -bottom-4 opacity-10"><Icon name="wallet" size={120}/></div>
-                                                <h5 className="font-black text-yellow-800 mb-2">Dari Jasa Simpanan (20%)</h5>
-                                                <p className="text-sm text-yellow-700 mb-6 relative z-10">Dibagikan sebanding dengan proporsi total simpanan Anda terhadap keseluruhan kas simpanan Koperasi.</p>
-                                                <div className="text-3xl font-black text-yellow-600 relative z-10">
-                                                    {formatIDR(totalCoopSavings > 0 ? (myData.totalSavings / totalCoopSavings) * (labaBersih * 0.20) : 0)}
-                                                </div>
-                                            </div>
-                                            <div className="bg-green-50 p-6 rounded-3xl border border-green-100 relative overflow-hidden">
-                                                <div className="absolute -right-4 -bottom-4 opacity-10"><Icon name="kredit" size={120}/></div>
-                                                <h5 className="font-black text-green-800 mb-2">Dari Jasa Anggota (30%)</h5>
-                                                <p className="text-sm text-green-700 mb-6 relative z-10">Dibagikan berdasarkan persentase kontribusi bayar margin/kredit Anda kepada Koperasi.</p>
-                                                <div className="text-3xl font-black text-green-600 relative z-10">
-                                                    {formatIDR(totalPendapatan > 0 ? (myData.marginContrib / totalPendapatan) * (labaBersih * 0.30) : 0)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
                             {/* --- TAB: PENGAJUAN ADMIN --- */}
                             {activeTab === 'pengajuan' && isAdmin && (
                                 <div className="bg-white rounded-3xl border shadow-sm overflow-hidden animate-fade-in">
                                     <div className="p-6 border-b flex justify-between items-center">
                                         <h4 className="font-black text-slate-800">Antrean Pengajuan Layanan</h4>
-                                        <span className="text-xs font-bold text-slate-400 bg-orange-50 text-orange-600 px-3 py-1 rounded-full">{pendingRequestsCount} Menunggu</span>
+                                        <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full">{pendingRequestsCount} Menunggu</span>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left min-w-[900px]">
@@ -907,12 +1157,12 @@
                                                         <tr key={r.id} className="hover:bg-slate-50 text-sm">
                                                             <td className="px-6 py-4 font-mono text-xs text-slate-500">{r.date}</td>
                                                             <td className="px-6 py-4"><div className="font-bold text-slate-700">{memberInfo?.name || r.member_id}</div><div className="text-[10px] text-slate-500 font-mono">{r.member_id}</div></td>
-                                                            <td className="px-6 py-4"><div className="font-bold text-blue-600">{r.type}</div><div className="text-[10px] text-slate-500">{r.notes} {r.type === 'Kredit' ? `(${r.tenor} Thn)` : ''}</div></td>
+                                                            <td className="px-6 py-4"><div className="font-bold text-emerald-700">{r.type}</div><div className="text-[10px] text-slate-500">{r.notes} {r.type === 'Kredit' ? `(${r.tenor} Thn)` : ''}</div></td>
                                                             <td className="px-6 py-4 text-right font-black text-slate-600">{formatIDR(r.amount)}</td>
                                                             <td className="px-6 py-4 text-center">
                                                                 {r.status === 'Menunggu' ? (
                                                                     <div className="flex justify-center space-x-2">
-                                                                        <button onClick={() => handleApproveRequest(r)} className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-colors" title="Setujui">
+                                                                        <button onClick={() => handleApproveRequest(r)} className="p-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-600 hover:text-white transition-colors" title="Setujui">
                                                                             <Icon name="check" size={16}/>
                                                                         </button>
                                                                         <button onClick={() => handleRejectRequest(r.id)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-colors" title="Tolak">
@@ -920,7 +1170,7 @@
                                                                         </button>
                                                                     </div>
                                                                 ) : (
-                                                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${r.status === 'Disetujui' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.status}</span>
+                                                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${r.status === 'Disetujui' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{r.status}</span>
                                                                 )}
                                                             </td>
                                                         </tr>
@@ -938,7 +1188,7 @@
                                 <div className="bg-white rounded-3xl border shadow-sm overflow-hidden animate-fade-in">
                                     <div className="p-6 border-b flex justify-between items-center">
                                         <h4 className="font-black text-slate-800">Direktori Anggota</h4>
-                                        <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">{members.length} Orang</span>
+                                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full">{members.length} Orang</span>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left min-w-[800px]">
@@ -949,7 +1199,7 @@
                                                 {members.map(m => (
                                                     <tr key={m.id} className="hover:bg-slate-50 text-sm transition-colors">
                                                         <td className="px-6 py-4 flex items-center space-x-4">
-                                                            <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">{m.photo_url ? <img src={m.photo_url} className="w-full h-full object-cover"/> : null}</div>
+                                                            <div className="w-10 h-10 rounded-full bg-emerald-100 overflow-hidden">{m.photo_url ? <img src={m.photo_url} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=047857&color=fbbf24`; }}/> : null}</div>
                                                             <div><div className="font-bold text-slate-800">{m.name}</div><div className="text-[10px] text-slate-400 font-mono">{m.id}</div></div>
                                                         </td>
                                                         <td className="px-6 py-4">
@@ -957,9 +1207,9 @@
                                                             <div className="text-xs text-slate-400">{m.phone}</div>
                                                         </td>
                                                         <td className="px-6 py-4 text-slate-500 font-mono text-xs">{m.join_date}</td>
-                                                        <td className="px-6 py-4"><span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-black uppercase tracking-wider">{m.status}</span></td>
+                                                        <td className="px-6 py-4"><span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-wider">{m.status}</span></td>
                                                         <td className="px-6 py-4 text-center">
-                                                            <button onClick={() => setPrintMember(m)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-colors" title="Lihat & Cetak Kartu">
+                                                            <button onClick={() => setPrintMember(m)} className="p-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-600 hover:text-white transition-colors" title="Lihat & Cetak Kartu">
                                                                 <Icon name="print" size={16}/>
                                                             </button>
                                                         </td>
@@ -976,7 +1226,7 @@
                                 <div className="space-y-6 animate-fade-in">
                                     {isAdmin && (
                                         <div className="flex justify-end">
-                                            <button onClick={()=>setShowModal('saving')} className="bg-green-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-green-200 hover:bg-green-700 transition-colors flex items-center space-x-2"><Icon name="plus"/><span>Input Setoran Kas</span></button>
+                                            <button onClick={()=>setShowModal('saving')} className="bg-emerald-700 text-amber-400 px-6 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-800 transition-colors flex items-center space-x-2"><Icon name="plus"/><span>Input Setoran Kas</span></button>
                                         </div>
                                     )}
                                     {!isAdmin && !myProfile ? (
@@ -996,8 +1246,8 @@
                                                             <tr key={s.id} className="hover:bg-slate-50 text-sm">
                                                                 <td className="px-6 py-4 font-mono text-xs text-slate-500">{s.date}</td>
                                                                 {isAdmin && <td className="px-6 py-4 font-mono text-xs text-slate-400">{s.member_id}</td>}
-                                                                <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${s.amount < 0 ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>{s.amount < 0 ? 'Penarikan' : s.type}</span></td>
-                                                                <td className={`px-6 py-4 text-right font-black ${s.amount < 0 ? 'text-orange-600' : 'text-green-600'}`}>{formatIDR(s.amount)}</td>
+                                                                <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${s.amount < 0 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{s.amount < 0 ? 'Penarikan' : s.type}</span></td>
+                                                                <td className={`px-6 py-4 text-right font-black ${s.amount < 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{formatIDR(s.amount)}</td>
                                                             </tr>
                                                         ))}
                                                         {savings.length === 0 && <tr><td colSpan={isAdmin ? "4" : "3"} className="text-center py-10 text-slate-400 text-sm">Belum ada data transaksi</td></tr>}
@@ -1013,7 +1263,7 @@
                             {activeTab === 'kredit' && isAdmin && (
                                 <div className="space-y-6 animate-fade-in">
                                     <div className="flex justify-end">
-                                        <button onClick={()=>setShowModal('kredit')} className="bg-orange-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-orange-200 hover:bg-orange-700 transition-colors flex items-center space-x-2"><Icon name="plus"/><span>Akad Kredit Baru</span></button>
+                                        <button onClick={()=>setShowModal('kredit')} className="bg-amber-500 text-emerald-900 px-6 py-3 rounded-2xl font-black shadow-lg shadow-amber-200 hover:bg-amber-600 transition-colors flex items-center space-x-2"><Icon name="plus"/><span>Akad Kredit Baru</span></button>
                                     </div>
                                     <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
                                         <div className="p-6 border-b"><h4 className="font-black text-slate-800">Daftar Pembiayaan Berjalan</h4></div>
@@ -1024,12 +1274,12 @@
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-100">
                                                     {financings.map(f => (
-                                                        <tr key={f.id} className="hover:bg-slate-50 text-sm">
+                                                        <tr key={f.id} className="hover:bg-amber-50/30 text-sm transition-colors">
                                                             <td className="px-6 py-4"><div className="font-mono text-xs font-bold text-slate-600">{f.id}</div><div className="text-[10px] text-slate-400">{f.date}</div></td>
                                                             <td className="px-6 py-4 font-mono text-xs text-slate-500">{f.member_id}</td>
                                                             <td className="px-6 py-4 font-semibold text-slate-700">{f.title}</td>
                                                             <td className="px-6 py-4 text-right font-bold text-slate-600">{formatIDR(f.amount)}</td>
-                                                            <td className="px-6 py-4 text-right font-black text-orange-600 bg-orange-50/30">{formatIDR(f.monthly)}</td>
+                                                            <td className="px-6 py-4 text-right font-black text-amber-600">{formatIDR(f.monthly)}</td>
                                                         </tr>
                                                     ))}
                                                     {financings.length === 0 && <tr><td colSpan="5" className="text-center py-10 text-slate-400 text-sm">Belum ada data pembiayaan</td></tr>}
@@ -1078,21 +1328,24 @@
                             {/* --- TAB: LAPORAN ADMIN --- */}
                             {activeTab === 'laporan' && isAdmin && (
                                 <div className="space-y-6 animate-fade-in">
-                                    {/* Laba Rugi & Arus Kas Cards */}
+                                    <div className="flex justify-end print-hide">
+                                        <button onClick={handleDownloadExcel} className="bg-emerald-700 text-amber-400 px-6 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-800 transition-colors flex items-center space-x-2">
+                                            <Icon name="download"/><span>Download Laporan (Excel)</span>
+                                        </button>
+                                    </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* Laba Rugi Card */}
                                         <div className="bg-white rounded-3xl border shadow-sm p-6 md:p-8">
                                             <div className="flex items-center justify-between mb-6 border-b pb-4">
                                                 <div>
                                                     <h4 className="font-black text-slate-800 text-lg">Laba Rugi</h4>
                                                     <p className="text-[10px] font-bold text-slate-400 uppercase">Cash Basis (Kas Riil Diterima)</p>
                                                 </div>
-                                                <div className="bg-blue-50 text-blue-600 p-2 rounded-xl"><Icon name="shu" size={24}/></div>
+                                                <div className="bg-emerald-50 text-emerald-700 p-2 rounded-xl"><Icon name="shu" size={24}/></div>
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="flex justify-between items-center text-sm">
                                                     <span className="text-slate-500 font-bold">Pendapatan Margin (Telah Dibayar)</span>
-                                                    <span className="font-black text-green-600">{formatIDR(totalPendapatan)}</span>
+                                                    <span className="font-black text-emerald-700">{formatIDR(totalPendapatan)}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-sm">
                                                     <span className="text-slate-500 font-bold">Beban Operasional & Lainnya</span>
@@ -1100,29 +1353,28 @@
                                                 </div>
                                                 <div className="pt-4 border-t flex justify-between items-center">
                                                     <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Laba Bersih (SHU Riil)</span>
-                                                    <span className={`text-2xl font-black ${labaBersih >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatIDR(labaBersih)}</span>
+                                                    <span className={`text-2xl font-black ${labaBersih >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatIDR(labaBersih)}</span>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {/* Arus Kas Card */}
                                         <div className="bg-white rounded-3xl border shadow-sm p-6 md:p-8">
                                             <div className="flex items-center justify-between mb-6 border-b pb-4">
                                                 <h4 className="font-black text-slate-800 text-lg">Arus Kas (Cash Flow)</h4>
-                                                <div className="bg-green-50 text-green-600 p-2 rounded-xl"><Icon name="wallet" size={24}/></div>
+                                                <div className="bg-amber-50 text-amber-600 p-2 rounded-xl"><Icon name="wallet" size={24}/></div>
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="flex justify-between items-center text-sm">
                                                     <span className="text-slate-500 font-bold">Total Kas Masuk</span>
-                                                    <span className="font-black text-green-600">{formatIDR(totalKasMasuk)}</span>
+                                                    <span className="font-black text-emerald-700">{formatIDR(totalKasMasuk)}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-[11px] md:text-sm pl-4">
                                                     <span className="text-slate-400">↳ Dari Setoran Simpanan</span>
-                                                    <span className="font-bold text-green-500">{formatIDR(totalKasSimpanan)}</span>
+                                                    <span className="font-bold text-emerald-600">{formatIDR(totalKasSimpanan)}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-[11px] md:text-sm pl-4">
                                                     <span className="text-slate-400">↳ Dari Setoran Cicilan Pinjaman</span>
-                                                    <span className="font-bold text-green-500">{formatIDR(totalKasCicilan)}</span>
+                                                    <span className="font-bold text-emerald-600">{formatIDR(totalKasCicilan)}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-sm mt-2">
                                                     <span className="text-slate-500 font-bold">Total Kas Keluar</span>
@@ -1142,14 +1394,71 @@
                                                 </div>
                                                 <div className="pt-4 border-t flex justify-between items-center">
                                                     <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Saldo Kas Tunai Akhir</span>
-                                                    <span className={`text-2xl font-black ${saldoKasAkhir >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatIDR(saldoKasAkhir)}</span>
+                                                    <span className={`text-2xl font-black ${saldoKasAkhir >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatIDR(saldoKasAkhir)}</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Existing Laporan Finansial Per Anggota */}
-                                    <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
+                                    <div className="bg-white rounded-3xl border shadow-sm p-6 md:p-8 mt-6">
+                                        <div className="flex items-center justify-between mb-6 border-b pb-4">
+                                            <h4 className="font-black text-slate-800 text-lg">Neraca Keuangan (Balance Sheet)</h4>
+                                            <div className="bg-emerald-50 text-emerald-700 p-2 rounded-xl"><Icon name="file" size={24}/></div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div>
+                                                <h5 className="font-bold text-emerald-700 mb-4 border-b-2 border-emerald-100 pb-2">AKTIVA (ASET)</h5>
+                                                <div className="space-y-3">
+                                                    <div className="flex justify-between items-center text-sm">
+                                                        <span className="text-slate-600">Kas Tunai & Bank</span>
+                                                        <span className="font-bold text-slate-800">{formatIDR(saldoKasAkhir)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-sm">
+                                                        <span className="text-slate-600">Piutang Pembiayaan Anggota</span>
+                                                        <span className="font-bold text-slate-800">{formatIDR(piutangKredit)}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4 pt-3 border-t flex justify-between items-center bg-emerald-50 p-3 rounded-xl">
+                                                    <span className="font-black text-emerald-800 text-sm">TOTAL AKTIVA</span>
+                                                    <span className="font-black text-emerald-700 text-lg">{formatIDR(totalAktiva)}</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <h5 className="font-bold text-amber-700 mb-4 border-b-2 border-amber-100 pb-2">PASIVA (KEWAJIBAN & EKUITAS)</h5>
+                                                <div className="space-y-3">
+                                                    <div className="flex justify-between items-center text-sm">
+                                                        <span className="text-slate-600 font-bold">Kewajiban</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-sm pl-4">
+                                                        <span className="text-slate-500">Simpanan Sukarela (Netto)</span>
+                                                        <span className="font-bold text-slate-800">{formatIDR(simpananSukarelaBersih)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-sm mt-2">
+                                                        <span className="text-slate-600 font-bold">Ekuitas (Modal)</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-sm pl-4">
+                                                        <span className="text-slate-500">Simpanan Pokok</span>
+                                                        <span className="font-bold text-slate-800">{formatIDR(totalPokok)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-sm pl-4">
+                                                        <span className="text-slate-500">Simpanan Wajib</span>
+                                                        <span className="font-bold text-slate-800">{formatIDR(totalWajib)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-sm pl-4">
+                                                        <span className="text-slate-500">SHU Berjalan (Laba Bersih)</span>
+                                                        <span className="font-bold text-slate-800">{formatIDR(labaBersih)}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4 pt-3 border-t flex justify-between items-center bg-amber-50 p-3 rounded-xl">
+                                                    <span className="font-black text-amber-800 text-sm">TOTAL PASIVA</span>
+                                                    <span className="font-black text-amber-700 text-lg">{formatIDR(totalPasiva)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white rounded-3xl border shadow-sm overflow-hidden mt-6">
                                         <div className="p-6 border-b"><h4 className="font-black text-slate-800">Laporan Finansial Per Anggota</h4></div>
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left min-w-[900px]">
@@ -1159,8 +1468,8 @@
                                                         <th className="px-6 py-4 text-right">Simpanan Pokok</th>
                                                         <th className="px-6 py-4 text-right">Simpanan Wajib</th>
                                                         <th className="px-6 py-4 text-right">Simpanan Sukarela</th>
-                                                        <th className="px-6 py-4 text-right bg-green-50 text-green-700">Total Simpanan</th>
-                                                        <th className="px-6 py-4 text-right bg-orange-50 text-orange-700">Tagihan Cicilan</th>
+                                                        <th className="px-6 py-4 text-right bg-emerald-50 text-emerald-700">Total Simpanan</th>
+                                                        <th className="px-6 py-4 text-right bg-amber-50 text-amber-700">Tagihan Cicilan</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-100">
@@ -1170,8 +1479,8 @@
                                                             <td className="px-6 py-4 text-right text-slate-600">{formatIDR(m.pokok)}</td>
                                                             <td className="px-6 py-4 text-right text-slate-600">{formatIDR(m.wajib)}</td>
                                                             <td className="px-6 py-4 text-right text-slate-600">{formatIDR(m.sukarela)}</td>
-                                                            <td className="px-6 py-4 text-right font-black text-green-700 bg-green-50/20">{formatIDR(m.totalSavings)}</td>
-                                                            <td className="px-6 py-4 text-right font-black text-orange-700 bg-orange-50/20">{formatIDR(m.totalAngsuran)}</td>
+                                                            <td className="px-6 py-4 text-right font-black text-emerald-700 bg-emerald-50/20">{formatIDR(m.totalSavings)}</td>
+                                                            <td className="px-6 py-4 text-right font-black text-amber-700 bg-amber-50/20">{formatIDR(m.totalAngsuran)}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -1190,9 +1499,9 @@
                                                 <h4 className="font-black text-2xl text-slate-800">Distribusi SHU Otomatis</h4>
                                                 <p className="text-sm text-slate-500 mt-1">Laba Bersih yang siap dibagikan setelah dikurangi seluruh beban operasional</p>
                                             </div>
-                                            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-right">
-                                                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Laba Bersih (SHU)</p>
-                                                <p className={`text-2xl font-black ${labaBersih >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatIDR(labaBersih)}</p>
+                                            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-right">
+                                                <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Laba Bersih (SHU)</p>
+                                                <p className={`text-2xl font-black ${labaBersih >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatIDR(labaBersih)}</p>
                                             </div>
                                         </div>
 
@@ -1201,23 +1510,23 @@
                                             <div className="h-6 w-full flex rounded-full overflow-hidden shadow-sm bg-slate-100">
                                                 {labaBersih > 0 && (
                                                     <Fragment>
-                                                        <div className="bg-blue-500 h-full" style={{width: '15%'}} title="Cadangan (15%)"></div>
+                                                        <div className="bg-emerald-600 h-full" style={{width: '15%'}} title="Cadangan (15%)"></div>
                                                         <div className="bg-green-500 h-full" style={{width: '30%'}} title="Jasa Anggota (30%)"></div>
-                                                        <div className="bg-yellow-500 h-full" style={{width: '20%'}} title="Jasa Simpanan (20%)"></div>
-                                                        <div className="bg-purple-500 h-full" style={{width: '10%'}} title="Pengurus (10%)"></div>
-                                                        <div className="bg-pink-500 h-full" style={{width: '5%'}} title="Sosial (5%)"></div>
-                                                        <div className="bg-teal-500 h-full" style={{width: '20%'}} title="Desa (20%)"></div>
+                                                        <div className="bg-amber-500 h-full" style={{width: '20%'}} title="Jasa Simpanan (20%)"></div>
+                                                        <div className="bg-emerald-800 h-full" style={{width: '10%'}} title="Pengurus (10%)"></div>
+                                                        <div className="bg-amber-300 h-full" style={{width: '5%'}} title="Sosial (5%)"></div>
+                                                        <div className="bg-teal-600 h-full" style={{width: '20%'}} title="Desa (20%)"></div>
                                                     </Fragment>
                                                 )}
                                             </div>
                                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">
                                                 {[
-                                                    { name: 'Dana Cadangan (15%)', color: 'bg-blue-500', val: Math.max(0, labaBersih) * 0.15 },
+                                                    { name: 'Dana Cadangan (15%)', color: 'bg-emerald-600', val: Math.max(0, labaBersih) * 0.15 },
                                                     { name: 'Jasa Anggota (30%)', color: 'bg-green-500', val: Math.max(0, labaBersih) * 0.30 },
-                                                    { name: 'Jasa Simpanan (20%)', color: 'bg-yellow-500', val: Math.max(0, labaBersih) * 0.20 },
-                                                    { name: 'Insentif Pengurus (10%)', color: 'bg-purple-500', val: Math.max(0, labaBersih) * 0.10 },
-                                                    { name: 'Dana Sosial (5%)', color: 'bg-pink-500', val: Math.max(0, labaBersih) * 0.05 },
-                                                    { name: 'Bagi Hasil Desa (20%)', color: 'bg-teal-500', val: Math.max(0, labaBersih) * 0.20 }
+                                                    { name: 'Jasa Simpanan (20%)', color: 'bg-amber-500', val: Math.max(0, labaBersih) * 0.20 },
+                                                    { name: 'Insentif Pengurus (10%)', color: 'bg-emerald-800', val: Math.max(0, labaBersih) * 0.10 },
+                                                    { name: 'Dana Sosial (5%)', color: 'bg-amber-300', val: Math.max(0, labaBersih) * 0.05 },
+                                                    { name: 'Bagi Hasil Desa (20%)', color: 'bg-teal-600', val: Math.max(0, labaBersih) * 0.20 }
                                                 ].map(item => (
                                                     <div key={item.name} className="flex items-center space-x-3 p-3 bg-slate-50 rounded-xl border">
                                                         <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
@@ -1239,7 +1548,7 @@
                                                             <th className="px-4 py-3">Nama Anggota</th>
                                                             <th className="px-4 py-3 text-right">Jasa Simpanan (20%)</th>
                                                             <th className="px-4 py-3 text-right">Jasa Anggota (30%)</th>
-                                                            <th className="px-4 py-3 text-right bg-blue-50 text-blue-700">Total Diterima</th>
+                                                            <th className="px-4 py-3 text-right bg-emerald-50 text-emerald-800">Total Diterima</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100">
@@ -1252,7 +1561,7 @@
                                                                     <td className="px-4 py-3 font-bold text-slate-700">{m.name} <span className="block text-[10px] text-slate-400 font-mono font-normal">{m.id}</span></td>
                                                                     <td className="px-4 py-3 text-right font-mono text-slate-500">{formatIDR(jasaSimpanan)}</td>
                                                                     <td className="px-4 py-3 text-right font-mono text-slate-500">{formatIDR(jasaAnggota)}</td>
-                                                                    <td className="px-4 py-3 text-right font-black text-blue-600 bg-blue-50/30">{formatIDR(totalTerima)}</td>
+                                                                    <td className="px-4 py-3 text-right font-black text-emerald-700 bg-emerald-50/30">{formatIDR(totalTerima)}</td>
                                                                 </tr>
                                                             );
                                                         })}
@@ -1273,9 +1582,9 @@
                                                 <h4 className="font-black text-2xl text-slate-800">Estimasi SHU Anda</h4>
                                                 <p className="text-sm text-slate-500 mt-1">Proyeksi pembagian Laba Bersih yang disinkronisasi secara real-time</p>
                                             </div>
-                                            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-right">
-                                                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Estimasi Total Diterima</p>
-                                                <p className="text-3xl font-black text-blue-600">
+                                            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-right">
+                                                <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Estimasi Total Diterima</p>
+                                                <p className="text-3xl font-black text-emerald-700">
                                                     {formatIDR(
                                                         (totalCoopSavings > 0 ? (myData.totalSavings / totalCoopSavings) * (Math.max(0, labaBersih) * 0.20) : 0) + 
                                                         (totalPendapatan > 0 ? (myData.actualMarginPaid / totalPendapatan) * (Math.max(0, labaBersih) * 0.30) : 0)
@@ -1285,19 +1594,19 @@
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                                            <div className="bg-yellow-50 p-6 rounded-3xl border border-yellow-100 relative overflow-hidden">
-                                                <div className="absolute -right-4 -bottom-4 opacity-10"><Icon name="wallet" size={120}/></div>
-                                                <h5 className="font-black text-yellow-800 mb-2">Dari Jasa Simpanan (20%)</h5>
-                                                <p className="text-sm text-yellow-700 mb-6 relative z-10">Dibagikan sebanding dengan proporsi total simpanan Anda terhadap keseluruhan kas simpanan Koperasi.</p>
-                                                <div className="text-3xl font-black text-yellow-600 relative z-10">
+                                            <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100 relative overflow-hidden">
+                                                <div className="absolute -right-4 -bottom-4 opacity-10 text-amber-500"><Icon name="wallet" size={120}/></div>
+                                                <h5 className="font-black text-amber-800 mb-2">Dari Jasa Simpanan (20%)</h5>
+                                                <p className="text-sm text-amber-700 mb-6 relative z-10">Dibagikan sebanding dengan proporsi total simpanan Anda terhadap keseluruhan kas simpanan Koperasi.</p>
+                                                <div className="text-3xl font-black text-amber-600 relative z-10">
                                                     {formatIDR(totalCoopSavings > 0 ? (myData.totalSavings / totalCoopSavings) * (Math.max(0, labaBersih) * 0.20) : 0)}
                                                 </div>
                                             </div>
-                                            <div className="bg-green-50 p-6 rounded-3xl border border-green-100 relative overflow-hidden">
-                                                <div className="absolute -right-4 -bottom-4 opacity-10"><Icon name="kredit" size={120}/></div>
-                                                <h5 className="font-black text-green-800 mb-2">Dari Jasa Anggota (30%)</h5>
-                                                <p className="text-sm text-green-700 mb-6 relative z-10">Dibagikan berdasarkan persentase kontribusi bayar margin/kredit Anda kepada Koperasi.</p>
-                                                <div className="text-3xl font-black text-green-600 relative z-10">
+                                            <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 relative overflow-hidden">
+                                                <div className="absolute -right-4 -bottom-4 opacity-10 text-emerald-600"><Icon name="kredit" size={120}/></div>
+                                                <h5 className="font-black text-emerald-800 mb-2">Dari Jasa Anggota (30%)</h5>
+                                                <p className="text-sm text-emerald-700 mb-6 relative z-10">Dibagikan berdasarkan persentase kontribusi bayar margin/kredit Anda kepada Koperasi.</p>
+                                                <div className="text-3xl font-black text-emerald-600 relative z-10">
                                                     {formatIDR(totalPendapatan > 0 ? (myData.actualMarginPaid / totalPendapatan) * (Math.max(0, labaBersih) * 0.30) : 0)}
                                                 </div>
                                             </div>
@@ -1314,14 +1623,14 @@
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 print-hide">
                             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(null)}></div>
                             <div className="bg-white rounded-[32px] w-full max-w-lg relative overflow-hidden shadow-2xl animate-fade-in">
-                                <div className="p-6 bg-green-600 text-white flex justify-between items-center">
+                                <div className="p-6 bg-emerald-800 text-amber-400 flex justify-between items-center">
                                     <h3 className="font-black uppercase text-sm tracking-wider">Input Setoran Kas</h3>
                                     <button onClick={() => setShowModal(null)} className="hover:rotate-90 transition-transform"><Icon name="x" /></button>
                                 </div>
                                 <div className="p-8 space-y-5">
                                     <div>
                                         <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Pilih Anggota</label>
-                                        <select className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-green-500" onChange={(e)=>setSavingForm({...savingForm, memberId: e.target.value})}>
+                                        <select className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-emerald-600" onChange={(e)=>setSavingForm({...savingForm, memberId: e.target.value})}>
                                             <option value="">-- Pilih Anggota --</option>
                                             {members.map(m => <option key={m.id} value={m.id}>{m.name} ({m.id})</option>)}
                                         </select>
@@ -1329,27 +1638,27 @@
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Simpanan Pokok (Rp)</label>
-                                            <input type="number" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none" value={savingForm.pokok || ''} onChange={(e)=>setSavingForm({...savingForm, pokok: Number(e.target.value)})}/>
+                                            <input type="number" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-emerald-600" value={savingForm.pokok || ''} onChange={(e)=>setSavingForm({...savingForm, pokok: Number(e.target.value)})}/>
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Simpanan Wajib (Rp)</label>
-                                            <input type="number" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none" value={savingForm.wajib || ''} onChange={(e)=>setSavingForm({...savingForm, wajib: Number(e.target.value)})}/>
+                                            <input type="number" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-emerald-600" value={savingForm.wajib || ''} onChange={(e)=>setSavingForm({...savingForm, wajib: Number(e.target.value)})}/>
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Simpanan Sukarela (Rp)</label>
-                                            <input type="number" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none" value={savingForm.sukarela || ''} onChange={(e)=>setSavingForm({...savingForm, sukarela: Number(e.target.value)})}/>
+                                            <input type="number" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-emerald-600" value={savingForm.sukarela || ''} onChange={(e)=>setSavingForm({...savingForm, sukarela: Number(e.target.value)})}/>
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Setoran Cicilan (Rp)</label>
-                                            <input type="number" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none" value={savingForm.cicilan || ''} onChange={(e)=>setSavingForm({...savingForm, cicilan: Number(e.target.value)})}/>
+                                            <input type="number" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-emerald-600" value={savingForm.cicilan || ''} onChange={(e)=>setSavingForm({...savingForm, cicilan: Number(e.target.value)})}/>
                                         </div>
                                     </div>
                                     
-                                    <div className="p-6 bg-green-50 rounded-2xl border border-green-100 flex justify-between items-center mt-6">
-                                        <p className="text-[10px] font-black uppercase text-green-800">Total Masuk</p>
-                                        <p className="text-2xl font-black text-green-600">{formatIDR(Number(savingForm.pokok) + Number(savingForm.wajib) + Number(savingForm.sukarela) + Number(savingForm.cicilan))}</p>
+                                    <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100 flex justify-between items-center mt-6">
+                                        <p className="text-[10px] font-black uppercase text-emerald-800">Total Masuk</p>
+                                        <p className="text-2xl font-black text-emerald-700">{formatIDR(Number(savingForm.pokok) + Number(savingForm.wajib) + Number(savingForm.sukarela) + Number(savingForm.cicilan))}</p>
                                     </div>
-                                    <button onClick={handleAddSaving} disabled={!savingForm.memberId} className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-300 text-white py-4 rounded-xl font-black shadow-lg transition-colors mt-4">SIMPAN TRANSAKSI</button>
+                                    <button onClick={handleAddSaving} disabled={!savingForm.memberId} className="w-full bg-emerald-800 hover:bg-emerald-900 disabled:bg-slate-300 text-amber-400 py-4 rounded-xl font-black shadow-lg transition-colors mt-4">SIMPAN TRANSAKSI</button>
                                 </div>
                             </div>
                         </div>
@@ -1360,7 +1669,7 @@
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 print-hide">
                             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(null)}></div>
                             <div className="bg-white rounded-[32px] w-full max-w-lg relative overflow-hidden shadow-2xl animate-fade-in flex flex-col max-h-[90vh]">
-                                <div className="p-6 bg-red-500 text-white flex justify-between items-center shrink-0">
+                                <div className="p-6 bg-red-600 text-white flex justify-between items-center shrink-0">
                                     <h3 className="font-black uppercase text-sm tracking-wider">Catat Pengeluaran Beban</h3>
                                     <button onClick={() => setShowModal(null)} className="hover:rotate-90 transition-transform"><Icon name="x" /></button>
                                 </div>
@@ -1384,7 +1693,7 @@
                                         <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Catatan Tambahan (Opsional)</label>
                                         <input type="text" placeholder="Misal: Tagihan PLN Bulan Juli" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-red-500" value={expenseForm.notes} onChange={(e)=>setExpenseForm({...expenseForm, notes: e.target.value})}/>
                                     </div>
-                                    <button onClick={handleAddExpense} disabled={!expenseForm.category || !expenseForm.amount} className="w-full bg-red-500 hover:bg-red-600 disabled:bg-slate-300 text-white py-4 rounded-xl font-black shadow-lg transition-colors mt-4">SIMPAN PENGELUARAN</button>
+                                    <button onClick={handleAddExpense} disabled={!expenseForm.category || !expenseForm.amount} className="w-full bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white py-4 rounded-xl font-black shadow-lg transition-colors mt-4">SIMPAN PENGELUARAN</button>
                                 </div>
                             </div>
                         </div>
@@ -1395,57 +1704,57 @@
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 print-hide">
                             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(null)}></div>
                             <div className="bg-white rounded-[32px] w-full max-w-lg relative overflow-hidden shadow-2xl animate-fade-in flex flex-col max-h-[90vh]">
-                                <div className="p-6 bg-orange-600 text-white flex justify-between items-center shrink-0">
+                                <div className="p-6 bg-amber-500 text-emerald-900 flex justify-between items-center shrink-0">
                                     <h3 className="font-black uppercase text-sm tracking-wider">Akad Kredit Baru</h3>
                                     <button onClick={() => setShowModal(null)} className="hover:rotate-90 transition-transform"><Icon name="x" /></button>
                                 </div>
                                 <div className="p-8 space-y-5 overflow-y-auto custom-scrollbar">
                                     {kreditForm.requestId && (
-                                        <div className="p-3 mb-2 bg-blue-50 text-blue-700 text-xs font-bold rounded-xl border border-blue-100 flex items-center gap-2">
+                                        <div className="p-3 mb-2 bg-amber-50 text-amber-700 text-xs font-bold rounded-xl border border-amber-100 flex items-center gap-2">
                                             <Icon name="bell" size={16}/> Formulir Pra-isi dari Pengajuan Anggota
                                         </div>
                                     )}
                                     <div>
                                         <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Pilih Anggota</label>
-                                        <select className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-orange-500" value={kreditForm.memberId} onChange={(e)=>setKreditForm({...kreditForm, memberId: e.target.value})}>
+                                        <select className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-amber-500" value={kreditForm.memberId} onChange={(e)=>setKreditForm({...kreditForm, memberId: e.target.value})}>
                                             <option value="">-- Pilih Anggota --</option>
                                             {members.map(m => <option key={m.id} value={m.id}>{m.name} ({m.id})</option>)}
                                         </select>
                                     </div>
                                     <div>
                                         <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Keterangan / Tujuan</label>
-                                        <input type="text" placeholder="Misal: Modal Usaha" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-orange-500" value={kreditForm.title} onChange={(e)=>setKreditForm({...kreditForm, title: e.target.value})}/>
+                                        <input type="text" placeholder="Misal: Modal Usaha" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-amber-500" value={kreditForm.title} onChange={(e)=>setKreditForm({...kreditForm, title: e.target.value})}/>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Plafon Pinjaman (Rp)</label>
-                                            <input type="number" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-orange-500" value={kreditForm.amount} onChange={(e)=>setKreditForm({...kreditForm, amount: Number(e.target.value)})}/>
+                                            <input type="number" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-amber-500" value={kreditForm.amount} onChange={(e)=>setKreditForm({...kreditForm, amount: Number(e.target.value)})}/>
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Margin Keuntungan (%)</label>
-                                            <input type="number" step="0.1" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-orange-500" value={kreditForm.marginPercent} onChange={(e)=>setKreditForm({...kreditForm, marginPercent: Number(e.target.value)})}/>
+                                            <input type="number" step="0.1" className="w-full p-4 bg-slate-50 rounded-xl border font-bold text-slate-700 outline-none focus:border-amber-500" value={kreditForm.marginPercent} onChange={(e)=>setKreditForm({...kreditForm, marginPercent: Number(e.target.value)})}/>
                                         </div>
                                     </div>
                                     <div>
                                         <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Tenor Pembiayaan</label>
                                         <div className="flex gap-2">
                                             {[1, 2, 3].map(t => (
-                                                <button key={t} onClick={() => setKreditForm({...kreditForm, tenor: t})} className={`flex-1 py-3 rounded-xl border font-black transition-colors ${kreditForm.tenor === t ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-slate-200 text-slate-400 hover:bg-slate-50'}`}>{t} Tahun</button>
+                                                <button key={t} onClick={() => setKreditForm({...kreditForm, tenor: t})} className={`flex-1 py-3 rounded-xl border font-black transition-colors ${kreditForm.tenor === t ? 'border-amber-500 bg-amber-50 text-amber-600' : 'border-slate-200 text-slate-400 hover:bg-slate-50'}`}>{t} Tahun</button>
                                             ))}
                                         </div>
                                     </div>
                                     
-                                    <div className="p-6 bg-slate-900 rounded-2xl flex justify-between items-end mt-6 shadow-lg">
+                                    <div className="p-6 bg-emerald-900 rounded-2xl flex justify-between items-end mt-6 shadow-lg border border-emerald-800">
                                         <div>
-                                            <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Estimasi Cicilan / Bln</p>
-                                            <p className="text-2xl font-black text-white">{formatIDR(calculateKredit().monthly)}</p>
+                                            <p className="text-[10px] font-black uppercase text-emerald-400 mb-1">Estimasi Cicilan / Bln</p>
+                                            <p className="text-2xl font-black text-amber-400">{formatIDR(calculateKredit().monthly)}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-[8px] font-black uppercase text-orange-400 mb-1">Total Pengembalian</p>
-                                            <p className="text-sm font-bold text-slate-300">{formatIDR(calculateKredit().total)}</p>
+                                            <p className="text-[8px] font-black uppercase text-emerald-300 mb-1">Total Pengembalian</p>
+                                            <p className="text-sm font-bold text-emerald-100">{formatIDR(calculateKredit().total)}</p>
                                         </div>
                                     </div>
-                                    <button onClick={handleAddKredit} disabled={!kreditForm.memberId || !kreditForm.amount || !kreditForm.title} className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-300 text-white py-4 rounded-xl font-black shadow-lg transition-colors mt-4">KIRIM PENGAJUAN</button>
+                                    <button onClick={handleAddKredit} disabled={!kreditForm.memberId || !kreditForm.amount || !kreditForm.title} className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-emerald-900 py-4 rounded-xl font-black shadow-lg transition-colors mt-4">KIRIM PENGAJUAN</button>
                                 </div>
                             </div>
                         </div>
@@ -1455,7 +1764,7 @@
                     {printMember && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm print-bg-white print-hide">
                             <div className="bg-white rounded-[32px] w-full max-w-lg overflow-hidden shadow-2xl animate-fade-in flex flex-col print-no-shadow">
-                                <div className="p-6 bg-blue-600 text-white flex justify-between items-center print-hide">
+                                <div className="p-6 bg-emerald-800 text-amber-400 flex justify-between items-center print-hide">
                                     <h3 className="font-black uppercase text-sm tracking-wider flex items-center gap-2"><Icon name="print"/> Cetak ID Card</h3>
                                     <button onClick={() => setPrintMember(null)} className="hover:rotate-90 transition-transform"><Icon name="x" /></button>
                                 </div>
@@ -1468,18 +1777,25 @@
                                     {/* --- KANVAS KARTU ANGGOTA --- */}
                                     <div className="id-card flex items-center justify-center w-full relative">
                                         <div 
-                                            className="bg-gradient-to-br from-blue-800 to-slate-900 rounded-xl shadow-xl overflow-hidden relative text-white flex box-border shrink-0" 
+                                            id="id-card-element"
+                                            className="bg-gradient-to-br from-emerald-900 to-[#022c22] rounded-xl shadow-xl overflow-hidden relative text-white flex box-border shrink-0" 
                                             style={{ width: '86mm', height: '54mm', padding: '4mm' }}
                                         >
-                                            <div className="absolute -right-8 -top-8 opacity-[0.08]"><Icon name="shu" size={130}/></div>
-                                            <div className="absolute left-0 bottom-0 w-full h-1/3 bg-gradient-to-t from-blue-600/30 to-transparent"></div>
+                                            {/* Efek Latar Belakang */}
+                                            <div className="absolute -right-8 -top-8 opacity-[0.08] text-amber-500"><Icon name="shu" size={130}/></div>
+                                            <div className="absolute left-0 bottom-0 w-full h-1/3 bg-gradient-to-t from-amber-500/20 to-transparent"></div>
 
-                                            <div className="w-[30%] flex flex-col items-center justify-between border-r border-white/20 pr-[4mm] relative z-10 h-full">
-                                                <div className="w-full aspect-[3/4] bg-white/10 rounded overflow-hidden border border-white/30 flex items-center justify-center">
+                                            {/* WATERMARK LOGO DI TENGAH */}
+                                            <div className="absolute inset-0 flex items-center justify-center z-0 opacity-[0.10] pointer-events-none select-none">
+                                                <img src={coopLogo} alt="Watermark" className="w-[45mm] h-[45mm] object-contain grayscale" />
+                                            </div>
+
+                                            <div className="w-[30%] flex flex-col items-center justify-between border-r border-amber-500/20 pr-[4mm] relative z-10 h-full">
+                                                <div className="w-full aspect-[3/4] bg-white/10 rounded overflow-hidden border border-amber-500/30 flex items-center justify-center">
                                                     {printMember.photo_url ? (
-                                                        <img src={printMember.photo_url} className="w-full h-full object-cover"/>
+                                                        <img src={printMember.photo_url} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(printMember.name)}&background=047857&color=fbbf24`; }}/>
                                                     ) : (
-                                                        <Icon name="user" size={24} className="text-white/50"/>
+                                                        <Icon name="user" size={24} className="text-amber-400/50"/>
                                                     )}
                                                 </div>
                                                 <div className="bg-white p-[2mm] rounded mt-[2mm] shrink-0 w-full aspect-square flex items-center justify-center">
@@ -1489,35 +1805,37 @@
 
                                             <div className="w-[70%] pl-[4mm] flex flex-col relative z-10 h-full">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <div className="w-5 h-5 bg-blue-500 rounded flex items-center justify-center font-black text-[10px] shadow-md shadow-blue-500/50">K</div>
-                                                    <h2 className="text-[10px] font-black uppercase tracking-widest text-blue-200">SikopPro Digital</h2>
+                                                    <div className="w-6 h-6 bg-white rounded flex items-center justify-center shadow-md shadow-amber-500/50 overflow-hidden shrink-0">
+                                                        <img src={coopLogo} alt="Logo" className="w-full h-full object-contain p-0.5" />
+                                                    </div>
+                                                    <h2 className="text-[10px] font-black uppercase tracking-widest text-amber-400">{coopName}</h2>
                                                 </div>
-                                                <div className="w-full h-[1px] bg-white/20 mb-3 mt-1"></div>
+                                                <div className="w-full h-[1px] bg-amber-500/20 mb-3 mt-1"></div>
 
-                                                <h3 className="text-[13px] font-black leading-tight uppercase truncate">{printMember.name}</h3>
-                                                <p className="text-[10px] font-mono text-blue-300 mb-auto">{printMember.id}</p>
+                                                <h3 className="text-[14px] font-black leading-normal uppercase pb-1" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{printMember.name}</h3>
+                                                <p className="text-[10px] font-mono text-emerald-200 mb-auto">{printMember.id}</p>
 
                                                 <div className="space-y-[2mm] mt-2 w-full">
                                                     <div>
-                                                        <p className="text-[6px] text-blue-300/80 uppercase tracking-widest leading-none mb-0.5">NIK (Kependudukan)</p>
-                                                        <p className="text-[9px] font-bold font-mono tracking-wider leading-none">{printMember.nik}</p>
+                                                        <p className="text-[6px] text-amber-200/80 uppercase tracking-widest leading-none mb-0.5">NIK (Kependudukan)</p>
+                                                        <p className="text-[9px] font-bold font-mono tracking-wider leading-none text-white">{printMember.nik}</p>
                                                     </div>
                                                     <div className="flex justify-between items-end">
                                                         <div>
-                                                            <p className="text-[6px] text-blue-300/80 uppercase tracking-widest leading-none mb-0.5">Tgl. Bergabung</p>
-                                                            <p className="text-[8px] font-bold leading-none">{printMember.join_date}</p>
+                                                            <p className="text-[6px] text-amber-200/80 uppercase tracking-widest leading-none mb-0.5">Tgl. Bergabung</p>
+                                                            <p className="text-[8px] font-bold leading-none text-white">{printMember.join_date}</p>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="text-[6px] text-blue-300/80 uppercase tracking-widest leading-none mb-0.5">Status Anggota</p>
-                                                            <p className="text-[8px] font-black text-green-400 uppercase leading-none">{printMember.status}</p>
+                                                            <p className="text-[6px] text-amber-200/80 uppercase tracking-widest leading-none mb-0.5">Status Anggota</p>
+                                                            <p className="text-[8px] font-black text-amber-400 uppercase leading-none">{printMember.status}</p>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <button onClick={() => window.print()} className="mt-8 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-black shadow-lg flex items-center gap-3 transition-colors print-hide">
-                                        <Icon name="print" size={24}/> CETAK KARTU SEKARANG
+                                    <button onClick={handleDownloadIDCard} className="mt-8 bg-emerald-800 hover:bg-emerald-900 text-amber-400 px-8 py-4 rounded-xl font-black shadow-lg flex items-center gap-3 transition-colors print-hide">
+                                        <Icon name="download" size={24}/> DOWNLOAD KARTU (PNG)
                                     </button>
                                 </div>
                             </div>
@@ -1528,9 +1846,9 @@
                     {alertMessage && (
                         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in print-hide">
                             <div className="bg-white p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl border border-slate-100">
-                                <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><Icon name="bell" size={30}/></div>
+                                <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4"><Icon name="bell" size={30}/></div>
                                 <p className="font-black text-slate-800 mb-6 text-sm">{alertMessage}</p>
-                                <button onClick={() => setAlertMessage(null)} className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-6 py-3 rounded-xl font-black w-full shadow-lg shadow-blue-200">Oke, Mengerti</button>
+                                <button onClick={() => setAlertMessage(null)} className="bg-emerald-800 hover:bg-emerald-900 transition-colors text-amber-400 px-6 py-3 rounded-xl font-black w-full shadow-lg shadow-emerald-200">Oke, Mengerti</button>
                             </div>
                         </div>
                     )}
@@ -1543,7 +1861,7 @@
                                 <p className="font-black text-slate-800 mb-6 text-sm">{confirmAction.message}</p>
                                 <div className="flex gap-4">
                                     <button onClick={() => setConfirmAction(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-3 rounded-xl font-black transition-colors">Batal</button>
-                                    <button onClick={() => { confirmAction.onConfirm(); setConfirmAction(null); }} className="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-xl font-black transition-colors shadow-lg shadow-orange-200">Ya, Lanjutkan</button>
+                                    <button onClick={() => { confirmAction.onConfirm(); setConfirmAction(null); }} className="flex-1 bg-emerald-800 hover:bg-emerald-900 text-amber-400 px-4 py-3 rounded-xl font-black transition-colors shadow-lg shadow-emerald-200">Ya, Lanjutkan</button>
                                 </div>
                             </div>
                         </div>
